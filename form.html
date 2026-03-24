@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Handees Artisan Onboarding</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#ffcc00",
+                        "on-primary-fixed": "#241a00",
+                        "primary": "#745b00",
+                        "surface": "#fcf9f8",
+                        "on-surface": "#1c1b1b",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container-high": "#ebe7e7",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#4e4632",
+                        "outline-variant": "#d2c5ab"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    },
+                    borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+
+<body class="bg-surface text-on-surface min-h-screen pb-20">
+    <header class="bg-[#ffcc00] sticky top-0 z-50 flex justify-start items-center w-full px-6 py-4">
+        <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-black text-[#1c1b1b] tracking-tighter">Handees</h1>
+        </div>
+    </header>
+
+    <main class="px-6 pt-8 max-w-md mx-auto">
+        <div class="mb-8">
+            <div class="flex justify-between items-end mb-3">
+                <h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Artisan Onboarding</h2>
+            </div>
+            <p class="mt-4 text-sm text-on-surface-variant leading-relaxed">Join our community of elite artisans in
+                Lagos. Please provide accurate details for verification.</p>
+        </div>
+
+        <form class="space-y-8" id="onboardingForm">
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-primary"
+                        style="font-variation-settings: 'FILL' 1;">person</span>
+                    <h3 class="text-xl font-bold tracking-tight">Personal Details</h3>
+                </div>
+                <div class="bg-surface-container-low p-6 rounded-lg space-y-4">
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Full
+                            Legal Name</label>
+                        <input id="fullName"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            placeholder="Enter your full name" required type="text" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">WhatsApp
+                            Phone Number</label>
+                        <input id="phoneNumber"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            placeholder="e.g. 08012345678" required type="tel" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">National
+                            Identity Number (NIN)</label>
+                        <input id="nin"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            maxlength="11" minlength="11"
+                            oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);"
+                            placeholder="11-digit NIN number" required type="number" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Current
+                            Residential Address</label>
+                        <textarea id="address"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            placeholder="Full home address" required rows="3"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-primary"
+                        style="font-variation-settings: 'FILL' 1;">handyman</span>
+                    <h3 class="text-xl font-bold tracking-tight">Professional Profile</h3>
+                </div>
+                <div class="bg-surface-container-low p-6 rounded-lg space-y-4">
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Primary
+                            Trade</label>
+                        <select id="trade"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium appearance-none"
+                            required>
+                            <option disabled selected value="">Select your trade</option>
+                            <option>Plumber</option>
+                            <option>Electrician</option>
+                            <option>Carpenter</option>
+                            <option>AC Repair</option>
+                            <option>Phone/Laptop Repair</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Years
+                            of Experience</label>
+                        <input id="experience"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            min="0" placeholder="Total years in trade" required type="number" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">10-Second
+                            Verification Video</label>
+                        <div
+                            class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant/30 rounded-lg bg-surface-container-lowest transition-all">
+                            <span class="material-symbols-outlined text-3xl text-primary mb-2">videocam</span>
+                            <input id="verificationVideo" accept="video/*" capture="user"
+                                class="text-xs font-bold text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-extrabold file:bg-primary-container file:text-on-primary-fixed cursor-pointer w-full"
+                                required type="file" />
+                        </div>
+                        <p class="mt-3 text-[11px] leading-tight text-on-surface-variant italic">"Please record a short
+                            10-second video showing your face clearly. State your full name, your trade, and that you
+                            are applying to Handees."</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-primary"
+                        style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+                    <h3 class="text-xl font-bold tracking-tight">Credentials <span
+                            class="text-sm font-normal text-on-surface-variant block">(Optional)</span></h3>
+                </div>
+                <div class="bg-surface-container-low p-6 rounded-lg space-y-5">
+                    <p
+                        class="text-[12px] leading-snug text-on-surface-variant italic bg-primary-container/10 p-3 rounded-lg border-l-4 border-primary-container">
+                        "Uploading these unlocks the 'Verified Master' badge on your profile."</p>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Member
+                            of an Artisan Union?</label>
+                        <select id="unionAffiliation"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium appearance-none"
+                            onchange="toggleUnionDetails(this.value)">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="group hidden" id="unionDetailsInput">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Name
+                            of Union Chapter</label>
+                        <input id="unionName"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            placeholder="e.g. Lagos Plumbers Assoc." type="text" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Upload
+                            Union ID (Optional)</label>
+                        <input id="unionIdFile"
+                            class="text-xs font-bold text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:bg-primary-container file:text-on-primary-fixed w-full"
+                            type="file" accept="image/*" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Upload
+                            Freedom Cert. (Optional)</label>
+                        <input id="freedomCertFile"
+                            class="text-xs font-bold text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:bg-primary-container file:text-on-primary-fixed w-full"
+                            type="file" accept="image/*" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-primary"
+                        style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                    <h3 class="text-xl font-bold tracking-tight">Guarantor Vetting</h3>
+                </div>
+                <div class="bg-surface-container-low p-6 rounded-lg space-y-4">
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Guarantor
+                            Full Name</label>
+                        <input id="guarantorName"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            required type="text" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Guarantor
+                            Phone Number</label>
+                        <input id="guarantorPhone"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            required type="tel" />
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Relationship</label>
+                        <select id="guarantorRel"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium appearance-none"
+                            required>
+                            <option disabled selected value="">Select relationship</option>
+                            <option>Uncle</option>
+                            <option>Aunt</option>
+                            <option>Former Boss</option>
+                            <option>Religious Leader</option>
+                            <option>Sibling</option>
+                        </select>
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Guarantor
+                            Address</label>
+                        <textarea id="guarantorAddress"
+                            class="w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
+                            required rows="2"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <div class="pt-4">
+                <button id="submitBtn" type="submit"
+                    class="w-full py-5 bg-primary-container text-on-primary-fixed font-black text-lg rounded-lg shadow-[0_10px_30px_rgba(255,204,0,0.3)] flex items-center justify-center gap-3 transition-all">
+                    <span>Complete Enrollment</span>
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <div id="successOverlay"
+        class="fixed inset-0 bg-[#fcf9f8] z-[100] hidden flex flex-col items-center justify-center p-8 text-center">
+        <div
+            class="w-24 h-24 bg-primary-container rounded-full flex items-center justify-center mb-6 shadow-xl animate-bounce">
+            <span class="material-symbols-outlined text-5xl text-on-primary-fixed">check_circle</span>
+        </div>
+        <h2 class="text-3xl font-black mb-2">Application Sent!</h2>
+        <p class="text-on-surface-variant mb-8">Your details are now with our vetting team. You can close this page and
+            return to WhatsApp.</p>
+    </div>
+
+    <script type="module">
+        // 1. Import Firebase core and specific services
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        // 2. YOUR FIREBASE CONFIG (Paste your specific keys here)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Helper function to handle file uploads
+        async function uploadFileAndGetUrl(fileObj, folderName) {
+            if (!fileObj) return null; // If optional file is skipped
+
+            // Create a unique filename using timestamp
+            const uniqueName = `${Date.now()}_${fileObj.name}`;
+            const storageRef = ref(storage, `${folderName}/${uniqueName}`);
+
+            // Upload the file
+            await uploadBytes(storageRef, fileObj);
+            // Get the public URL
+            return await getDownloadURL(storageRef);
+        }
+
+        // Expose toggle function to global window so HTML inline onclick works
+        window.toggleUnionDetails = function (value) {
+            const details = document.getElementById('unionDetailsInput');
+            if (value === 'Yes') {
+                details.classList.remove('hidden');
+            } else {
+                details.classList.add('hidden');
+            }
+        }
+
+        const form = document.getElementById('onboardingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const successOverlay = document.getElementById('successOverlay');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Update button state to prevent double clicks and inform user
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-3 text-on-primary-fixed" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Uploading Video... Do not close.
+            `;
+
+            try {
+                // 1. Grab all the files
+                const videoFile = document.getElementById('verificationVideo').files[0];
+                const unionIdFile = document.getElementById('unionIdFile').files[0];
+                const freedomCertFile = document.getElementById('freedomCertFile').files[0];
+
+                // 2. Upload files to Storage sequentially (Optional files will return null if empty)
+                const videoUrl = await uploadFileAndGetUrl(videoFile, 'artisan_verification_videos');
+                const unionIdUrl = await uploadFileAndGetUrl(unionIdFile, 'artisan_credentials');
+                const freedomCertUrl = await uploadFileAndGetUrl(freedomCertFile, 'artisan_credentials');
+
+                submitBtn.innerHTML = `Saving Profile...`; // Update text for the database write phase
+
+                // 3. Construct the Document Payload
+                const payload = {
+                    personalDetails: {
+                        fullName: document.getElementById('fullName').value,
+                        phoneNumber: document.getElementById('phoneNumber').value,
+                        nin: document.getElementById('nin').value,
+                        address: document.getElementById('address').value,
+                    },
+                    professionalProfile: {
+                        trade: document.getElementById('trade').value,
+                        experience: parseInt(document.getElementById('experience').value),
+                        verificationVideoUrl: videoUrl
+                    },
+                    credentials: {
+                        isUnionMember: document.getElementById('unionAffiliation').value === 'Yes',
+                        unionName: document.getElementById('unionName').value || null,
+                        unionIdUrl: unionIdUrl,
+                        freedomCertUrl: freedomCertUrl
+                    },
+                    guarantor: {
+                        name: document.getElementById('guarantorName').value,
+                        phone: document.getElementById('guarantorPhone').value,
+                        relationship: document.getElementById('guarantorRel').value,
+                        address: document.getElementById('guarantorAddress').value
+                    },
+                    status: "pending_review",
+                    createdAt: new Date()
+                };
+
+                // 4. Write to Firestore
+                await addDoc(collection(db, "pending_artisans"), payload);
+
+                // 5. Trigger Success Overlay
+                successOverlay.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error during submission: ", error);
+                alert("There was an error submitting your application. Please check your internet connection and try again.");
+
+                // Reset button so they can try again
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>Complete Enrollment</span>`;
+            }
+        });
+    </script>
+</body>
+
+</html>
