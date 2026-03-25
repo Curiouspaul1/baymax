@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Handees Admin Vetting Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#745b00",
+                        "primary-container": "#ffcc00",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface": "#f9f9f9",
+                    },
+                    fontFamily: { "body": ["Inter"] },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e2e2e2;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ffcc00;
+        }
+
+        .active-card {
+            border-color: #fbbf24 !important;
+            background-color: white !important;
+        }
+    </style>
+</head>
+
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+    <aside class="flex flex-col fixed left-0 top-0 h-full z-40 bg-slate-50 h-screen w-64 border-r border-slate-200/50">
+        <div class="p-6">
+            <h1 class="text-xl font-black text-slate-800 uppercase tracking-widest mb-1">Handees Admin</h1>
+            <p class="font-medium text-xs tracking-tight text-slate-500 uppercase">Vetting Officer</p>
+        </div>
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <a class="flex items-center gap-3 px-4 py-3 text-yellow-700 font-bold border-r-4 border-yellow-500 bg-yellow-50/50"
+                href="#">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span class="text-sm">Dashboard</span>
+            </a>
+            <button id="btn-signout"
+                class="w-full mt-auto flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all border-t border-slate-200/50">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="text-sm font-medium">Sign Out</span>
+            </button>
+        </nav>
+    </aside>
+
+    <header
+        class="flex justify-between items-center w-full h-16 px-10 ml-64 max-w-[calc(100%-16rem)] fixed top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div class="flex items-center flex-1">
+            <div class="relative w-full max-w-md">
+                <span
+                    class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                <input
+                    class="w-full bg-slate-50 border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-yellow-500"
+                    placeholder="Search applications..." type="text" />
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm font-semibold text-slate-900" id="admin-email-display">---</span>
+            <div class="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-xs">V</div>
+        </div>
+    </header>
+
+    <main class="ml-64 mt-16 h-[calc(100vh-4rem)] flex overflow-hidden">
+        <section class="w-1/4 bg-slate-50 flex flex-col border-r border-slate-100">
+            <div class="p-8 pb-4">
+                <h2
+                    class="text-xs font-black text-slate-400 tracking-[0.2em] uppercase flex items-center justify-between">
+                    Pending Queue
+                    <span id="queue-count"
+                        class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-[10px] font-bold">0</span>
+                </h2>
+            </div>
+            <div id="queue-list" class="flex-1 overflow-y-auto p-6 pt-2 space-y-4"></div>
+        </section>
+
+        <section id="review-panel" style="display: none;" class="flex-1 bg-white flex flex-col overflow-y-auto">
+            <div class="p-16 pb-8">
+                <span class="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-4 block">Application
+                    Profile</span>
+                <h2 id="disp-name-title" class="text-5xl font-black text-on-surface tracking-tighter mb-2">---</h2>
+                <p id="disp-trade-title" class="text-slate-500 flex items-center gap-2 text-lg">---</p>
+            </div>
+
+            <div class="px-16 space-y-20 pb-48 max-w-6xl">
+                <div>
+                    <div class="flex items-center gap-4 mb-10">
+                        <h3 class="text-2xl font-black tracking-tight">Personal Dossier</h3>
+                        <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-16 gap-y-10">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Full
+                                Legal Name</label>
+                            <p id="disp-name" class="text-on-surface text-lg font-medium">---</p>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Residential
+                                Address</label>
+                            <p id="disp-address" class="text-on-surface text-lg font-medium leading-relaxed">---</p>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Contact
+                                Number</label>
+                            <p id="disp-phone" class="text-on-surface text-lg font-medium">---</p>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">National
+                                ID (NIN)</label>
+                            <p id="disp-nin" class="text-on-surface text-lg font-medium font-mono">---</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-4 mb-10">
+                        <h3 class="text-2xl font-black tracking-tight">Vetting Media</h3>
+                        <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-12">
+                        <div id="media-video-container"
+                            class="aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center">
+                            <p class="text-slate-500 text-xs">Loading video...</p>
+                        </div>
+                        <div id="media-cert-container" class="grid grid-cols-2 gap-4"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-4 mb-10">
+                        <h3 class="text-2xl font-black tracking-tight">Guarantor Verification</h3>
+                        <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
+                    </div>
+                    <div class="bg-slate-50 p-12 rounded-3xl">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h4 id="disp-g-name" class="text-xl font-bold">---</h4>
+                                <p id="disp-g-rel" class="text-slate-500 font-medium">---</p>
+                            </div>
+                            <div class="flex flex-col items-end gap-2">
+                                <button id="btn-log-call"
+                                    class="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-lg hover:bg-slate-100 transition-all flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">call</span> LOG GUARANTOR CALL
+                                </button>
+                                <span id="call-status-badge"
+                                    class="hidden px-3 py-1 bg-blue-100 text-blue-700 text-[9px] font-black rounded-full uppercase">Call
+                                    Logged</span>
+                            </div>
+                        </div>
+                        <p id="disp-g-address" class="text-slate-600 text-lg italic leading-relaxed">---</p>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="fixed bottom-0 right-0 w-[calc(100%-16rem)] bg-white/95 backdrop-blur-xl border-t border-slate-100 p-8 z-50">
+                <div class="max-w-6xl mx-auto flex items-center justify-between gap-12">
+                    <div class="flex-1 flex items-center gap-12">
+                        <div class="flex-1 flex gap-4">
+                            <button id="btn-approve"
+                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-green-600 hover:text-white transition-all">APPROVE</button>
+                            <button id="btn-reject"
+                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-red-600 hover:text-white transition-all">REJECT</button>
+                        </div>
+                        <div class="w-72">
+                            <select id="input-reason" style="display: none;"
+                                class="w-full bg-slate-100 border-none rounded-xl text-sm py-4 font-bold">
+                                <option value="">Select reason...</option>
+                                <option>Fake Guarantor</option>
+                                <option>Invalid NIN</option>
+                                <option>Poor Video Quality</option>
+                                <option>Identity Mismatch</option>
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="btn-finalize"
+                        class="px-12 py-4 bg-primary text-on-primary font-black rounded-xl shadow-2xl hover:bg-primary/90 transition-all">FINALIZE
+                        DECISION</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="empty-state" class="flex-1 flex items-center justify-center bg-white text-slate-300">
+            <div class="text-center">
+                <span class="material-symbols-outlined text-6xl">folder_open</span>
+                <p class="font-medium mt-2">Select an application from the queue to review</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAilatYX6E6A-W7iw83o9lxDiAF99EfYDI",
+            authDomain: "handees-dev.firebaseapp.com",
+            projectId: "handees-dev",
+            storageBucket: "handees-dev.firebasestorage.app",
+            messagingSenderId: "840733521710",
+            appId: "1:840733521710:web:6d1f070dc886b6893becbf"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // UI State Elements
+        const queueList = document.getElementById('queue-list');
+        const queueCount = document.getElementById('queue-count');
+        const reviewPanel = document.getElementById('review-panel');
+        const emptyState = document.getElementById('empty-state');
+        const btnFinalize = document.getElementById('btn-finalize');
+        const btnLogCall = document.getElementById('btn-log-call');
+        const badgeCall = document.getElementById('call-status-badge');
+        const inputReason = document.getElementById('input-reason');
+        const btnApprove = document.getElementById('btn-approve');
+        const btnReject = document.getElementById('btn-reject');
+
+        let selectedId = null;
+        let selectedVerdict = null;
+        let guarantorCallTime = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'index.html';
+            else {
+                document.getElementById('admin-email-display').innerText = user.email;
+                fetchQueue();
+            }
+        });
+
+        async function fetchQueue() {
+            try {
+                const q = query(collection(db, "pending_artisans"), where("status", "==", "pending_review"));
+                const snap = await getDocs(q);
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                queueCount.innerText = list.length;
+                queueList.innerHTML = '';
+
+                list.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = "p-5 bg-white/50 border border-transparent rounded-xl cursor-pointer hover:border-slate-200 mb-2";
+                    card.innerHTML = `<p class="text-sm font-bold text-slate-900">${a.personalDetails.fullName}</p><p class="text-xs text-slate-500">${a.professionalProfile.trade}</p>`;
+                    card.onclick = () => {
+                        document.querySelectorAll('#queue-list div').forEach(d => d.classList.remove('active-card'));
+                        card.classList.add('active-card');
+                        displayArtisan(a);
+                    };
+                    queueList.appendChild(card);
+                });
+            } catch (e) {
+                if (e.code === 'permission-denied') {
+                    alert("Unauthorized Access Attempt Blocked.");
+                    signOut(auth).then(() => window.location.href = 'index.html');
+                }
+            }
+        }
+
+        async function displayArtisan(a) {
+            selectedId = a.id;
+            selectedVerdict = null;
+            guarantorCallTime = null;
+            badgeCall.style.display = 'none';
+            resetVerdictUI();
+
+            emptyState.style.display = 'none';
+            reviewPanel.style.display = 'flex';
+
+            // Top Profile Section (Title)
+            document.getElementById('disp-name-title').innerText = a.personalDetails.fullName;
+            document.getElementById('disp-trade-title').innerText = a.professionalProfile.trade;
+
+            // Personal Dossier Grid
+            document.getElementById('disp-name').innerText = a.personalDetails.fullName;
+            document.getElementById('disp-phone').innerText = a.personalDetails.phoneNumber;
+            document.getElementById('disp-nin').innerText = a.personalDetails.nin;
+            document.getElementById('disp-address').innerText = a.personalDetails.address;
+
+            // Guarantor Section
+            document.getElementById('disp-g-name').innerText = a.guarantor.name;
+            document.getElementById('disp-g-rel').innerText = a.guarantor.relationship;
+            document.getElementById('disp-g-address').innerText = a.guarantor.address;
+
+            // Media Loader (Video)
+            const videoBox = document.getElementById('media-video-container');
+            videoBox.innerHTML = '<p class="text-slate-500 text-[10px] animate-pulse">STREAMING SECURE VIDEO...</p>';
+            try {
+                const url = await getDownloadURL(ref(storage, a.professionalProfile.verificationVideoPath));
+                videoBox.innerHTML = `<video src="${url}" controls class="w-full h-full object-cover"></video>`;
+            } catch (e) { videoBox.innerHTML = 'Video Load Error'; }
+
+            // Media Loader (Certs)
+            const certBox = document.getElementById('media-cert-container');
+            certBox.innerHTML = '';
+            ['unionIdPath', 'freedomCertPath'].forEach(async key => {
+                const path = a.credentials?.[key];
+                if (path) {
+                    try {
+                        const url = await getDownloadURL(ref(storage, path));
+                        certBox.innerHTML += `<img src="${url}" class="rounded-xl border border-slate-200 aspect-square object-cover cursor-zoom-in" onclick="window.open('${url}')">`;
+                    } catch (err) { console.error("Error loading cert:", err); }
+                }
+            });
+        }
+        btnLogCall.onclick = () => {
+            guarantorCallTime = new Date();
+            badgeCall.style.display = 'block';
+        };
+        // Sign Out Trigger
+        document.getElementById('btn-signout').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                // The onAuthStateChanged listener will automatically 
+                // handle the redirect to index.html
+            } catch (error) {
+                console.error("Sign out failed:", error);
+            }
+        });
+
+        btnApprove.onclick = () => {
+            selectedVerdict = 'approved';
+            inputReason.style.display = 'none';
+            btnApprove.className = "flex-1 py-4 bg-green-600 text-white font-black rounded-xl";
+            btnReject.className = "flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl";
+        };
+
+        btnReject.onclick = () => {
+            selectedVerdict = 'rejected';
+            inputReason.style.display = 'block';
+            btnReject.className = "flex-1 py-4 bg-red-600 text-white font-black rounded-xl";
+            btnApprove.className = "flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl";
+        };
+
+        btnFinalize.onclick = async () => {
+            if (!selectedVerdict) return alert("Please select a verdict.");
+            if (selectedVerdict === 'rejected' && !inputReason.value) return alert("Provide a rejection reason.");
+
+            btnFinalize.disabled = true;
+            btnFinalize.innerText = "SAVING AUDIT LOG...";
+
+            try {
+                const payload = {
+                    status: selectedVerdict,
+                    audit: {
+                        verdictMadeAt: serverTimestamp(),
+                        verdictMadeBy: auth.currentUser.email,
+                        guarantorContactedAt: guarantorCallTime || null,
+                        rejectionReason: selectedVerdict === 'rejected' ? inputReason.value : null
+                    }
+                };
+
+                await updateDoc(doc(db, "pending_artisans", selectedId), payload);
+
+                reviewPanel.style.display = 'none';
+                emptyState.style.display = 'flex';
+                fetchQueue();
+                alert("Artisan Vetting Completed.");
+
+            } catch (e) { alert("Error saving decision."); }
+
+            btnFinalize.disabled = false;
+            btnFinalize.innerText = "FINALIZE DECISION";
+        };
+
+        function resetVerdictUI() {
+            btnApprove.className = "flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl";
+            btnReject.className = "flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl";
+            inputReason.style.display = 'none';
+            inputReason.value = "";
+        }
+    </script>
+</body>
+
+</html>

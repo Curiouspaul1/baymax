@@ -10,12 +10,11 @@ from flask import Flask, request, abort
 
 from utils import parse_message, send_message, ParsedMessage, send_image
 
-# ADDED NEW IMPORTS HERE
+# Updated db_manager imports (removed old save_artisan_application)
 from db_manager import (
     log_request,
     log_proposal,
     close_request_in_db,
-    save_artisan_application,
     approve_artisan_in_db,
     get_artisan_profile,
     complete_request_in_db,
@@ -30,6 +29,9 @@ ADMIN_NO = os.getenv("ADMIN_NO")
 ARTISAN_GROUP_INVITE_LINK = os.getenv(
     "WHATSAPP_GROUP_LINK", "https://chat.whatsapp.com/NO_INVITE_FOUND"
 )
+ONBOARDING_FORM_URL = os.getenv(
+    "ONBOARDING_FORM_URL", "https://your-hosted-form-link.com"
+)  # <-- NEW ENV VAR
 
 app = Flask(__name__)
 r = redis.Redis(
@@ -38,15 +40,13 @@ r = redis.Redis(
 
 # --- STATE CONSTANTS ---
 STATE_START = "START"
+STATE_CHOOSING_ROLE = "CHOOSING_ROLE"
+STATE_ARTISAN_PORTAL = "ARTISAN_PORTAL"
 STATE_WAITING_CATEGORY = "WAITING_CATEGORY"
 STATE_WAITING_DESCRIPTION = "WAITING_DESCRIPTION"
 STATE_WAITING_PHOTO = "WAITING_PHOTO"
 STATE_WAITING_CONFIRMATION = "WAITING_CONFIRMATION"
 STATE_ARTISAN_PROPOSING = "ARTISAN_PROPOSING"
-STATE_ONB_LOCATION = "ONB_LOCATION"
-STATE_ONB_SKILL = "ONB_SKILL"
-STATE_ONB_EXP = "ONB_EXP"
-STATE_ONB_VIDEO = "ONB_VIDEO"
 
 CATEGORIES = {
     "1": "Plumber",
@@ -105,17 +105,6 @@ def payload():
                 text_body = parsed.text_body or ""
                 image_id = parsed.image_id
                 msg_type = parsed.msg_type
-
-                try:
-                    video_id = (
-                        payload_data["entry"][0]["changes"][0]["value"]["messages"][0][
-                            "video"
-                        ]["id"]
-                        if msg_type == "video"
-                        else None
-                    )
-                except KeyError:
-                    video_id = None
             else:
                 return "ok", 200
         except (KeyError, IndexError):
@@ -169,12 +158,9 @@ def payload():
                 actual_pin = r.get(f"req:{target_req}:pin")
 
                 if actual_pin and actual_pin == submitted_pin:
-                    # Mark complete in DB
                     complete_request_in_db(target_req, sender_id)
-
                     response_text = "🎉 *Job Completed!* You have successfully verified the handshake. Thank you for your great work!"
 
-                    # Notify the customer that the system registered it
                     cust_id = r.get(f"req:{target_req}:customer")
                     if cust_id:
                         cust_msg = f"✅ Your Handees request *{target_req}* has been officially marked as completed by the artisan. Thank you for using Handees!"
@@ -192,9 +178,7 @@ def payload():
         # ==========================================
         # 🛑 CUSTOMER "CLOSE" COMMAND
         # ==========================================
-        if msg_type == "text" and (
-            text_body_upper.strip().lower() == 'close'
-        ):
+        if msg_type == "text" and text_body_upper == "CLOSE":
             active_req = r.get(f"customer:{sender_id}:active_req")
             if active_req:
                 r.set(f"req:{active_req}:status", "CLOSED", ex=86400)
@@ -214,6 +198,15 @@ def payload():
         # 🚀 ARTISAN INTERCEPTION LOGIC (PROPOSAL)
         # ==========================================
         if msg_type == "text" and text_body_upper.startswith("HND-"):
+            # Security Check: Are they a verified artisan in the DB?
+            profile = get_artisan_profile(sender_id)
+            if not profile or profile.get("status") != "approved":
+                send_message(
+                    sender_id,
+                    "🚫 Security Alert: You must be a fully verified artisan to bid on open jobs. Send 'Hi' and select the Artisan Portal to apply.",
+                )
+                return "", 200
+
             ref_id_input = text_body_upper
             customer_id = r.get(f"req:{ref_id_input}:customer")
 
@@ -232,78 +225,61 @@ def payload():
             return "", 200
 
         # ==========================================
-        # 👷 ARTISAN ONBOARDING "JOIN" TRIGGER
-        # ==========================================
-        if msg_type == "text" and text_body_upper.strip().lower() == 'join':
-            r.set(state_key, STATE_ONB_LOCATION, ex=900)
-            response_text = "Welcome to Handees! 🛠️\nLet's get you set up to receive jobs.\n\nWhere is your primary workshop located?\n1️⃣ Akoka\n2️⃣ Yaba\n3️⃣ Bariga\n4️⃣ Other"
-            send_message(sender_id, response_text)
-            return "", 200
-
-        # ==========================================
-        # 🛠️ STATE MACHINE (CUSTOMER & ONBOARDING)
+        # 🛠️ STATE MACHINE ROUTER
         # ==========================================
         if current_state == STATE_START or (
-            msg_type == "text" and text_body.lower() == "reset"
+            msg_type == "text" and text_body_upper == "RESET"
         ):
             r.delete(data_key_cat, data_key_desc, data_key_photo)
-            response_text = "Welcome to Handees! 🛠️\nI can help you find a trusted artisan.\n\n1️⃣ Plumber\n2️⃣ Electrician\n3️⃣ Carpenter\n4️⃣ AC/Fridge Repair\n5️⃣ Phone/Laptop Repair\n6️⃣ Other \n\n⚠️ *DISCLAIMER:* Handees connects you with independent artisans. We are not liable for any fraudulent activity, damages or theft. Please remain cautious while interacting with them, supervise work and secure valuables.\n\nReply with the *number* of the service you need to continue:"
-            r.set(state_key, STATE_WAITING_CATEGORY, ex=900)
+            response_text = (
+                "Welcome to Handees! 🛠️ The safest way to fix your home in Yaba/Akoka.\n\n"
+                "How can we help you today?\n"
+                "Reply *1* - I need a service (Customer)\n"
+                "Reply *2* - I want to provide a service (Artisan Portal)"
+            )
+            r.set(state_key, STATE_CHOOSING_ROLE, ex=900)
 
-        # --- ARTISAN ONBOARDING STATES ---
-        elif current_state == STATE_ONB_LOCATION:
-            if msg_type == "text" and text_body in ["1", "2", "3"]:
-                loc_map = {"1": "Akoka", "2": "Yaba", "3": "Bariga"}
-                r.set(f"onb:{sender_id}:loc", loc_map[text_body], ex=900)
+        # --- ROLE SELECTION ---
+        elif current_state == STATE_CHOOSING_ROLE:
+            if text_body == "1":
                 response_text = (
-                    "Great! What is your main skill? (e.g., Plumber, Electrician)"
+                    "Let's get your issue fixed. Select a category:\n\n"
+                    "1️⃣ Plumber\n2️⃣ Electrician\n3️⃣ Carpenter\n4️⃣ AC/Fridge Repair\n"
+                    "5️⃣ Phone/Laptop Repair\n6️⃣ Other\n\n"
+                    "Reply with the *number* of the service you need:"
                 )
-                r.set(state_key, STATE_ONB_SKILL, ex=900)
-            elif msg_type == "text" and text_body == "4":
-                response_text = "Sorry, we are currently only onboarding artisans within the Unilag/Akoka/Yaba axis. We will notify you when we expand! 👋"
+                r.set(state_key, STATE_WAITING_CATEGORY, ex=900)
+            elif text_body == "2":
+                response_text = (
+                    "Welcome to the Handees Artisan Portal. 👷\n\n"
+                    "Reply *A* - Apply to join the network.\n"
+                    "Reply *B* - View open jobs & send proposals."
+                )
+                r.set(state_key, STATE_ARTISAN_PORTAL, ex=900)
+            else:
+                response_text = "⚠️ Please reply with 1 or 2."
+
+        # --- ARTISAN PORTAL ---
+        elif current_state == STATE_ARTISAN_PORTAL:
+            if text_body_upper == "A":
+                response_text = (
+                    "Ready to go online? 🚀 To protect our community, all artisans must pass our security vetting.\n\n"
+                    "Click the secure link below to submit your Guarantor details and verify your identity. It takes 3 minutes.\n"
+                    f"🔗 {ONBOARDING_FORM_URL}\n\n"
+                    "*Note: Your application will be reviewed manually by our team.*"
+                )
+                r.delete(state_key)
+            elif text_body_upper == "B":
+                profile = get_artisan_profile(sender_id)
+                if profile and profile.get("status") == "approved":
+                    response_text = "You are a verified artisan! ✅\n\nTo bid on an open job, simply reply to this chat with the Request ID (e.g., HND-1A2B) posted in the community group."
+                else:
+                    response_text = "⚠️ You cannot view open jobs yet. Your profile is either incomplete or pending manual review.\n\nIf you haven't applied yet, send 'Hi' -> Option 2 -> Option A."
                 r.delete(state_key)
             else:
-                response_text = "Please reply with 1, 2, 3, or 4."
+                response_text = "⚠️ Please reply with A or B."
 
-        elif current_state == STATE_ONB_SKILL:
-            if msg_type == "text":
-                r.set(f"onb:{sender_id}:skill", text_body, ex=900)
-                response_text = "How many years of experience do you have doing this?"
-                r.set(state_key, STATE_ONB_EXP, ex=900)
-            else:
-                response_text = "Please send text."
-
-        elif current_state == STATE_ONB_EXP:
-            if msg_type == "text":
-                r.set(f"onb:{sender_id}:exp", text_body, ex=900)
-                response_text = "Almost done! 📹\n\nPlease send a short video (max 30 seconds) showing your face and the tools you use for your trade. This proves you are a real professional."
-                r.set(state_key, STATE_ONB_VIDEO, ex=900)
-            else:
-                response_text = "Please send text."
-
-        elif current_state == STATE_ONB_VIDEO:
-            if msg_type == "video":
-                loc = r.get(f"onb:{sender_id}:loc")
-                skill = r.get(f"onb:{sender_id}:skill")
-                exp = r.get(f"onb:{sender_id}:exp")
-
-                save_artisan_application(sender_id, loc, skill, exp, video_id)
-                form_link = os.getenv(
-                    "KYC_FORM_LINK", "https://forms.gle/YOUR_GOOGLE_FORM"
-                )
-                response_text = f"✅ Video received!\n\nFinal step: Please click this secure link to upload your valid ID and Guarantor details:\n{form_link}\n\nWe will review your profile within 24 hours. If approved, you will automatically receive an invite to our group chat!"
-                r.delete(
-                    state_key,
-                    f"onb:{sender_id}:loc",
-                    f"onb:{sender_id}:skill",
-                    f"onb:{sender_id}:exp",
-                )
-            else:
-                response_text = (
-                    "⚠️ Please send a short video to complete your registration."
-                )
-
-        # --- CUSTOMER REQUEST STATES ---
+        # --- CUSTOMER FLOW ---
         elif current_state == STATE_WAITING_CATEGORY:
             if text_body in CATEGORIES:
                 r.set(data_key_cat, CATEGORIES[text_body], ex=900)
@@ -327,7 +303,7 @@ def payload():
             if msg_type == "image":
                 r.set(data_key_photo, image_id, ex=900)
                 has_photo = "Yes"
-            elif msg_type == "text" and text_body.lower() == "skip":
+            elif msg_type == "text" and text_body_upper == "SKIP":
                 r.set(data_key_photo, "None", ex=900)
             else:
                 send_message(sender_id, "Please send a photo or type 'SKIP'.")
@@ -340,18 +316,17 @@ def payload():
             r.set(state_key, STATE_WAITING_CONFIRMATION, ex=900)
 
         elif current_state == STATE_WAITING_CONFIRMATION:
-            if text_body and text_body.lower() == "yes":
+            if text_body_upper == "YES":
                 final_cat = r.get(data_key_cat)
                 final_desc = r.get(data_key_desc)
                 final_photo = r.get(data_key_photo)
 
                 ref_id = generate_ref_id()
-                pin_code = generate_pin()  # <--- NEW PIN
+                pin_code = generate_pin()
 
-                # Save request and PIN state
                 r.set(f"req:{ref_id}:customer", sender_id, ex=86400)
                 r.set(f"req:{ref_id}:status", "OPEN", ex=86400)
-                r.set(f"req:{ref_id}:pin", pin_code, ex=86400)  # Store the PIN securely
+                r.set(f"req:{ref_id}:pin", pin_code, ex=86400)
                 r.set(f"customer:{sender_id}:active_req", ref_id, ex=86400)
 
                 has_photo_bool = bool(final_photo and final_photo != "None")
@@ -362,7 +337,6 @@ def payload():
                 if final_photo and final_photo != "None":
                     send_image(ADMIN_NO, final_photo)
 
-                # Send PIN to Customer
                 response_text = (
                     f"✅ Request Received! Your ID is *{ref_id}*.\n\n"
                     f"🔒 *YOUR SECURITY PIN: {pin_code}*\n"
@@ -384,10 +358,9 @@ def payload():
                 if customer_id and req_status == "OPEN":
                     log_proposal(target_req, sender_id, text_body)
 
-                    # Fetch Profile for ID Card
                     profile = get_artisan_profile(sender_id)
                     if profile:
-                        artisan_card = f"👷 *Pro:* Verified {profile.get('skill', 'Artisan')}\n📍 *Base:* {profile.get('location', 'Local')}\n⏳ *Experience:* {profile.get('experience', 'Verified')} years\n🛡️ *Guarantor Status:* Cleared"
+                        artisan_card = f"👷 *Pro:* Verified {profile.get('trade', 'Artisan')}\n⏳ *Experience:* {profile.get('experience', 'Verified')} years\n🛡️ *Guarantor Status:* Cleared"
                     else:
                         artisan_card = "👷 *Pro:* Handees Verified Artisan\n🛡️ *Guarantor Status:* Cleared"
 
@@ -396,7 +369,7 @@ def payload():
                         f"🔖 *For Request:* {target_req}\n"
                         f"{artisan_card}\n\n"
                         f"💬 *Proposal:* {text_body}\n\n"
-                        f"👉 *Contact Artisan:* wa.me/{sender_id}\n"
+                        f"👉 *Contact Artisan:* wa.me/{sender_id.replace('+', '')}\n"
                         "_(If you hire this artisan, reply with *CLOSE* to stop receiving proposals)_"
                     )
                     send_message(customer_id, customer_msg)
@@ -408,7 +381,7 @@ def payload():
 
                 r.delete(state_key, f"artisan:{sender_id}:target_req")
 
-        elif msg_type == "text" and text_body.lower() == "cancel":
+        elif msg_type == "text" and text_body_upper == "CANCEL":
             response_text = "❌ Session cleared. Type 'Hi' to start over."
             r.delete(state_key, data_key_cat, data_key_desc, data_key_photo)
 

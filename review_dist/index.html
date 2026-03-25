@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Handees Admin | Secure Vetting Portal Login</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "secondary-fixed-dim": "#c6c6c9",
+            "on-surface-variant": "#4e4632",
+            "background": "#f9f9f9",
+            "on-error": "#ffffff",
+            "surface-container-low": "#f3f3f3",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "on-surface": "#1a1c1c",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed-variant": "#862200",
+            "on-secondary-fixed": "#1a1c1e",
+            "on-background": "#1a1c1c",
+            "inverse-surface": "#2f3131",
+            "secondary-container": "#e2e2e5",
+            "on-error-container": "#93000a",
+            "tertiary": "#b02f00",
+            "surface-container-lowest": "#ffffff",
+            "primary-fixed-dim": "#f1c100",
+            "primary": "#745b00",
+            "inverse-on-surface": "#f1f1f1",
+            "secondary-fixed": "#e2e2e5",
+            "error": "#ba1a1a",
+            "on-secondary": "#ffffff",
+            "tertiary-fixed": "#ffdbd1",
+            "surface": "#f9f9f9",
+            "primary-fixed": "#ffe08b",
+            "outline-variant": "#d2c5ab",
+            "on-tertiary-fixed": "#3b0900",
+            "on-secondary-container": "#636467",
+            "tertiary-container": "#ffc5b5",
+            "on-tertiary-container": "#a92d00",
+            "inverse-primary": "#f1c100",
+            "primary-container": "#ffcc00",
+            "surface-container-highest": "#e2e2e2",
+            "secondary": "#5d5e61",
+            "on-primary-fixed-variant": "#584400",
+            "surface-container": "#eeeeee",
+            "surface-tint": "#745b00",
+            "surface-variant": "#e2e2e2",
+            "on-primary-fixed": "#241a00",
+            "on-primary-container": "#6f5700",
+            "surface-bright": "#f9f9f9",
+            "on-primary": "#ffffff",
+            "outline": "#80765f",
+            "surface-container-high": "#e8e8e8",
+            "on-tertiary": "#ffffff",
+            "on-secondary-fixed-variant": "#454749",
+            "surface-dim": "#dadada"
+          },
+          fontFamily: {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+        },
+      },
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    .industrial-gradient {
+      background: linear-gradient(135deg, #745b00 0%, #f1c100 100%);
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+
+<body class="bg-surface font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+  <main class="relative min-h-screen w-full flex flex-col items-center justify-center p-6 overflow-hidden">
+    <!-- Background Decorative Elements (Industrial Curator Aesthetic) -->
+    <div class="absolute inset-0 z-0">
+      <div class="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary-container/10 blur-[120px]">
+      </div>
+      <div class="absolute bottom-[-5%] left-[-5%] w-[40%] h-[40%] rounded-full bg-secondary-container/20 blur-[100px]">
+      </div>
+      <div
+        class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]">
+      </div>
+    </div>
+    <!-- Login Container -->
+    <div class="relative z-10 w-full max-w-[480px]">
+      <!-- Logo Section (Asymmetric Editorial Placement) -->
+      <div class="mb-12 flex items-center gap-3">
+        <div class="w-12 h-12 bg-primary-container flex items-center justify-center rounded-lg shadow-sm">
+          <span class="material-symbols-outlined text-on-primary-container text-3xl"
+            data-icon="construction">construction</span>
+        </div>
+        <div>
+          <h1 class="text-2xl font-black tracking-widest text-secondary uppercase leading-none">Handees</h1>
+          <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Internal Infrastructure</span>
+        </div>
+      </div>
+      <!-- Main Login Card -->
+      <div class="glass-panel border-0 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.08)] rounded-xl overflow-hidden">
+        <div class="p-10 md:p-12">
+          <header class="mb-10">
+            <h2 class="text-4xl font-black text-secondary tracking-tight leading-tight mb-2">Vetting Officer Login</h2>
+            <p class="text-secondary/70 text-sm font-medium">Authentication required for secure artisan verification
+              access.</p>
+          </header>
+          <div class="space-y-6">
+            <!-- Primary Action: Google Login -->
+            <button
+              class="group w-full flex items-center justify-center gap-4 bg-surface-container-highest hover:bg-surface-container-lowest text-secondary font-bold py-5 px-6 rounded-lg transition-all duration-300 border border-outline/10 hover:shadow-lg focus:ring-2 focus:ring-primary focus:outline-none">
+              <svg class="w-6 h-6" viewbox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"></path>
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"></path>
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                  fill="#FBBC05"></path>
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"></path>
+              </svg>
+              <span class="tracking-tight">Sign in with Google</span>
+              <span class="material-symbols-outlined ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                data-icon="arrow_forward">arrow_forward</span>
+            </button>
+            <div class="relative py-4">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-outline-variant/30"></div>
+              </div>
+              <div
+                class="relative flex justify-center text-xs uppercase tracking-widest font-bold text-outline bg-transparent px-4">
+                Restricted Access
+              </div>
+            </div>
+            <!-- Secondary Identity Display (Simulated) -->
+            <div class="bg-surface-container-low p-4 rounded-lg flex items-center gap-4">
+              <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+                <span class="material-symbols-outlined text-outline" data-icon="shield_person">shield_person</span>
+              </div>
+              <div class="flex-1">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-outline">Security Protocol</div>
+                <div class="text-xs font-semibold text-secondary">Multi-Factor Authentication Required</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Industrial Stripe -->
+        <div class="h-2 w-full flex">
+          <div class="h-full w-1/3 bg-primary"></div>
+          <div class="h-full w-1/3 bg-primary-container"></div>
+          <div class="h-full w-1/3 bg-secondary"></div>
+        </div>
+      </div>
+      <!-- Footer Section -->
+      <footer class="mt-12 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-error-container/20 rounded-full mb-4">
+          <span class="material-symbols-outlined text-error text-sm" data-icon="gpp_maybe">gpp_maybe</span>
+          <span class="text-[10px] font-black uppercase tracking-widest text-error">Internal Use Only. Authorized
+            Personnel Only.</span>
+        </div>
+        <div class="text-outline text-[11px] font-medium leading-relaxed max-w-xs mx-auto">
+          By accessing this portal, you agree to the Handees Data Security &amp; Privacy Policy. Unauthorised access
+          attempts are logged and reported.
+        </div>
+      </footer>
+    </div>
+    <!-- Decorative Floating Elements -->
+    <div class="absolute left-10 bottom-10 hidden xl:block pointer-events-none">
+      <div class="text-[12rem] font-black text-secondary/5 select-none leading-none">01</div>
+      <div class="text-xs font-bold uppercase tracking-[0.5em] text-outline/30 mt-[-2rem] ml-12">System: Secure_Auth
+      </div>
+    </div>
+    <div class="absolute right-10 top-10 hidden xl:block pointer-events-none text-right">
+      <div class="text-xs font-bold uppercase tracking-[0.5em] text-outline/30 mb-2">Vetting Portal v1.0</div>
+      <div class="w-32 h-[1px] bg-outline/20 ml-auto"></div>
+    </div>
+  </main>
+  <!-- Support Elements -->
+  <div class="fixed bottom-6 right-6 z-20">
+    <button
+      class="w-12 h-12 rounded-full bg-secondary text-surface flex items-center justify-center shadow-lg hover:bg-primary transition-colors group">
+      <span class="material-symbols-outlined text-xl" data-icon="help_outline">help_outline</span>
+      <span
+        class="absolute right-14 bg-secondary text-surface text-[10px] uppercase tracking-widest font-bold py-1 px-3 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Support</span>
+    </button>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    // PASTE YOUR FIREBASE CONFIG HERE
+    const firebaseConfig = {
+      apiKey: "AIzaSyAilatYX6E6A-W7iw83o9lxDiAF99EfYDI",
+      authDomain: "handees-dev.firebaseapp.com",
+      projectId: "handees-dev",
+      storageBucket: "handees-dev.firebasestorage.app",
+      messagingSenderId: "840733521710",
+      appId: "1:840733521710:web:6d1f070dc886b6893becbf"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Find the Google login button (Stitch made it the first button on the page)
+    const loginBtn = document.querySelector('button');
+
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+        // No checks here! Just move forward.
+        window.location.href = 'dashboard.html';
+      } catch (error) {
+        console.error("Login failed:", error);
+      }
+    });
+  </script>
+</body>
+
+</html>
