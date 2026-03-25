@@ -5,6 +5,7 @@ import hashlib
 import random
 import string
 
+from flask_cors import CORS
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 
@@ -21,6 +22,7 @@ from db_manager import (
     approve_artisan_in_db,
     get_artisan_profile,
     complete_request_in_db,
+    check_application_eligibility
 )
 
 load_dotenv()
@@ -40,6 +42,10 @@ app = Flask(__name__)
 r = redis.Redis(
     host=REDIS_HOST, password=REDIS_PASS, port=6379, db=10, decode_responses=True
 )
+CORS(app, resources={
+    r"/admin/*": {"origins": "https://handeesartisanreview.netlify.app"},
+    r"/api/*": {"origins": "https://handeesartisan.netlify.app"}
+})
 
 # --- STATE CONSTANTS ---
 STATE_START = "START"
@@ -397,28 +403,46 @@ def payload():
         return "", 403
 
 
-@app.post("/admin/notify-approval")
-def notify_approval():
+@app.post("/admin/notify-verdict")
+def notify_verdict():
     data = request.get_json(force=True)
     artisan_phone = data.get("phone")
     artisan_name = data.get("name")
+    status = data.get("status")
+    reason = data.get("reason", "Not specified")
 
     if not artisan_phone:
         return {"error": "Phone number missing"}, 400
 
-    # Ensure the phone number is clean for the API (e.g., remove the +)
     formatted_phone = artisan_phone.replace("+", "").replace(" ", "")
 
-    # Fire the official Meta Template
-    # Ensure "artisan_approval_alert" matches exactly what you named it in Meta
-    send_template_message(
-        to_number=formatted_phone,
-        template_name="artisan_approval",
-        name_var=artisan_name,
-        link_var=ARTISAN_GROUP_INVITE_LINK
-    )
+    if status == "approved":
+        send_template_message(
+            to_number=formatted_phone,
+            template_name="artisan_approval",
+            params_dict={
+                "name": artisan_name,
+                "group_link": ARTISAN_GROUP_INVITE_LINK
+            }
+        )
+    elif status == "rejected":
+        send_template_message(
+            to_number=formatted_phone,
+            template_name="artisan_disapproval",
+            params_dict={
+                "name": artisan_name,
+                "reason": reason
+            }
+        )
 
     return {"status": "success"}, 200
+
+
+@app.get("/api/check-eligibility/<nin>")
+def api_check_eligibility(nin):
+    # Uses your admin-privileged Python SDK to safely check the DB
+    is_eligible, message = check_application_eligibility(nin)
+    return {"eligible": is_eligible, "message": message}, 200
 
 
 if __name__ == "__main__":

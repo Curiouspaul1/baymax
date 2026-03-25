@@ -1,79 +1,8 @@
-# # db_manager.py
-# import sqlite3
-# import hashlib
-# from datetime import datetime
-
-# DB_FILE = "handees_data.db"
-
-
-# def init_db():
-#     conn = sqlite3.connect(DB_FILE)
-#     c = conn.cursor()
-#     # Create Requests Table
-#     c.execute(
-#         """
-#         CREATE TABLE IF NOT EXISTS service_requests (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             ref_id TEXT UNIQUE,
-#             customer_phone_hash TEXT,
-#             category TEXT,
-#             raw_description TEXT,
-#             has_photo BOOLEAN,
-#             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-#         )
-#     """
-#     )
-#     # Create Proposals Table
-#     c.execute(
-#         """
-#         CREATE TABLE IF NOT EXISTS artisan_proposals (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             request_ref TEXT,
-#             artisan_phone_hash TEXT,
-#             proposal_text TEXT,
-#             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-#         )
-#     """
-#     )
-#     conn.commit()
-#     conn.close()
-
-
-# def hash_phone(phone_number):
-#     """Anonymize phone numbers for AI training datasets"""
-#     return hashlib.sha256(phone_number.encode()).hexdigest()
-
-
-# def log_request(ref_id, phone, category, description, has_photo):
-#     conn = sqlite3.connect(DB_FILE)
-#     c = conn.cursor()
-#     c.execute(
-#         """
-#         INSERT INTO service_requests (ref_id, customer_phone_hash, category, raw_description, has_photo)
-#         VALUES (?, ?, ?, ?, ?)
-#     """,
-#         (ref_id, hash_phone(phone), category, description, has_photo),
-#     )
-#     conn.commit()
-#     conn.close()
-
-
-# def log_proposal(ref_id, artisan_phone, proposal_text):
-#     conn = sqlite3.connect(DB_FILE)
-#     c = conn.cursor()
-#     c.execute(
-#         """
-#         INSERT INTO artisan_proposals (request_ref, artisan_phone_hash, proposal_text)
-#         VALUES (?, ?, ?)
-#     """,
-#         (ref_id, hash_phone(artisan_phone), proposal_text),
-#     )
-#     conn.commit()
-#     conn.close()
-
-# firestore_db.py
 import hashlib
+from datetime import datetime, timezone
+
 from google.cloud import firestore
+from firebase_admin import firestore
 
 db = firestore.Client()
 
@@ -179,3 +108,69 @@ def complete_request_in_db(ref_id, artisan_phone):
         )
     except Exception as e:
         print(f"Firestore Error: {e}")
+
+
+def check_application_eligibility(nin):
+    """
+    Checks if an artisan is allowed to submit a new application based on their NIN.
+    Returns: (is_eligible: bool, message: str)
+    """
+    # 1. Fetch the most recent application for this NIN
+    query = (
+        db.collection("pending_artisans")
+        .where("personalDetails.nin", "==", nin)
+        .order_by("createdAt", direction=firestore.Query.DESCENDING)
+        .limit(1)
+    )
+
+    docs = query.stream()
+    latest_app = next(docs, None)
+
+    # If no record exists, they are good to go
+    if not latest_app:
+        return True, "Eligible"
+
+    data = latest_app.to_dict()
+    status = data.get("status", "pending_review")
+
+    # --- RULE 1: Already Pending ---
+    if status == "pending_review":
+        return (
+            False,
+            "You already have an application under review. Please wait for our team to contact you.",
+        )
+
+    # --- RULE 2: Already Approved ---
+    if status == "approved":
+        return False, "This NIN is already registered to an active Handees artisan."
+
+    # --- RULE 3: Rejected (The Cooldown Logic) ---
+    if status == "rejected":
+        audit = data.get("audit", {})
+        verdict_time = audit.get("verdictMadeAt")
+        reason = audit.get("rejectionReason", "")
+
+        # A. Severe Infractions (Permanent Ban)
+        critical_flags = ["Fake Guarantor", "Invalid NIN", "Identity Mismatch"]
+        if any(flag in reason for flag in critical_flags):
+            return (
+                False,
+                "This NIN has been flagged by our compliance team and cannot be used.",
+            )
+
+        # B. Minor Infractions (7-Day Cooldown)
+        if verdict_time:
+            # Convert Firestore Datetime to timezone-aware UTC
+            verdict_date = verdict_time.replace(tzinfo=timezone.utc)
+            days_since_rejection = (datetime.now(timezone.utc) - verdict_date).days
+
+            COOLDOWN_DAYS = 7  # Much better for pilot growth than 30 days
+
+            if days_since_rejection < COOLDOWN_DAYS:
+                days_left = COOLDOWN_DAYS - days_since_rejection
+                return (
+                    False,
+                    f"Application rejected due to: {reason}. Please fix this and try again in {days_left} days.",
+                )
+
+    return True, "Eligible"

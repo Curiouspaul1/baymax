@@ -162,7 +162,7 @@
                             <label
                                 class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Residential
                                 Address</label>
-                            <p id="disp-address" class="text-on-surface text-lg font-medium">---</p>
+                            <p id="disp-address" class="text-on-surface text-lg font-medium leading-relaxed">---</p>
                         </div>
                         <div>
                             <label
@@ -176,8 +176,6 @@
                                 ID (NIN)</label>
                             <div class="flex items-center gap-4">
                                 <p id="disp-nin" class="text-on-surface text-lg font-medium font-mono">---</p>
-                                <!-- <button onclick="openNINModal()"
-                                    class="text-[10px] font-black bg-slate-900 text-white px-3 py-1 rounded hover:bg-yellow-500 transition-colors">VERIFY</button> -->
                                 <button disabled
                                     class="text-[10px] font-black bg-slate-200 text-slate-400 px-3 py-1 rounded cursor-not-allowed">
                                     VERIFY (COMING SOON)
@@ -240,7 +238,6 @@
                                         <input id="input-call-duration" type="number" placeholder="0"
                                             class="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-primary outline-none">
                                     </div>
-
                                     <button id="btn-log-call"
                                         class="px-4 py-2 mt-4 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-lg hover:bg-slate-100 transition-all flex items-center gap-2">
                                         <span class="material-symbols-outlined text-sm">call</span> LOG CALL
@@ -268,13 +265,14 @@
                         </div>
                         <div class="w-72">
                             <select id="input-reason" style="display: none;"
-                                class="w-full bg-slate-100 border-none rounded-xl text-sm py-4 font-bold">
-                                <option value="">Select reason...</option>
-                                <option>Fake Guarantor</option>
-                                <option>Invalid NIN</option>
-                                <option>Poor Video Quality</option>
-                                <option>Identity Mismatch</option>
-                                <option>Other</option>
+                                class="w-full bg-slate-100 border-none rounded-xl text-sm py-4 font-bold focus:ring-2 focus:ring-primary outline-none">
+                                <option value="">Select rejection reason...</option>
+                                <option value="Fake Guarantor">Fake Guarantor</option>
+                                <option value="Invalid NIN">Invalid NIN</option>
+                                <option value="Identity Mismatch">Identity Mismatch</option>
+                                <option value="Poor Video Quality">Poor Video Quality</option>
+                                <option value="Invalid Documents">Invalid Documents</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
                     </div>
@@ -299,6 +297,7 @@
         import { getFirestore, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
+        // PASTE YOUR FIREBASE CONFIG HERE
         const firebaseConfig = {
             apiKey: "AIzaSyAilatYX6E6A-W7iw83o9lxDiAF99EfYDI",
             authDomain: "handees-dev.firebaseapp.com",
@@ -319,6 +318,7 @@
         const reviewPanel = document.getElementById('review-panel');
         const emptyState = document.getElementById('empty-state');
         const btnFinalize = document.getElementById('btn-finalize');
+        const inputCallDuration = document.getElementById('input-call-duration');
         const btnLogCall = document.getElementById('btn-log-call');
         const badgeCall = document.getElementById('call-status-badge');
         const inputReason = document.getElementById('input-reason');
@@ -326,7 +326,6 @@
         const btnReject = document.getElementById('btn-reject');
         const ninModal = document.getElementById('nin-modal');
         const ninContent = document.getElementById('nin-modal-content');
-        const inputCallDuration = document.getElementById('input-call-duration');
 
         let selectedId = null;
         let selectedVerdict = null;
@@ -413,51 +412,30 @@
             } else { certBox.innerHTML = '<p class="text-slate-300 text-[10px]">Not Provided</p>'; }
         }
 
-        // NIN Modal Controls
-        window.openNINModal = () => {
+        // NIN Modal Controls (Disabled for now, logic retained)
+        window.openNINModal = async () => {
             ninModal.classList.remove('hidden');
             ninContent.innerHTML = `
                 <div class="flex flex-col items-center py-12">
                     <div class="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-slate-500 font-medium mt-4">Querying NIN ${currentNIN}...</p>
+                    <p class="text-slate-500 font-medium mt-4">Querying NIMC Database...</p>
                 </div>
             `;
-
-            // Simulation of API Call
-            setTimeout(() => {
-                ninContent.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="flex items-start gap-6 bg-slate-50 p-6 rounded-2xl">
-                            <div class="w-24 h-24 bg-slate-200 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined text-4xl text-slate-400">person</span>
-                            </div>
-                            <div class="space-y-1">
-                                <p class="text-[10px] font-black text-slate-400 uppercase">Registered Name</p>
-                                <p class="text-lg font-bold text-slate-900">${document.getElementById('disp-name').innerText}</p>
-                                <p class="text-[10px] font-black text-slate-400 uppercase mt-4">Gender / DOB</p>
-                                <p class="text-sm font-medium">Male • 12 Oct 1988</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-green-50 border border-green-100 p-4 rounded-xl">
-                                <p class="text-[9px] font-black text-green-700 uppercase">Verification Status</p>
-                                <p class="text-sm font-bold text-green-800">MATCH SUCCESS</p>
-                            </div>
-                            <div class="bg-slate-50 p-4 rounded-xl">
-                                <p class="text-[9px] font-black text-slate-500 uppercase">Database Source</p>
-                                <p class="text-sm font-bold text-slate-800">NIMC-LIVE-V1</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }, 1500);
+            // Simulation logic kept ready for real API
         };
 
         window.closeNINModal = () => ninModal.classList.add('hidden');
 
         btnLogCall.onclick = () => {
+            const duration = inputCallDuration.value;
+            if (!duration || parseInt(duration) <= 0) {
+                alert("⚠️ Please enter a valid call duration (in minutes) before logging the call.");
+                inputCallDuration.focus();
+                return;
+            }
             guarantorCallTime = new Date();
             badgeCall.style.display = 'block';
+            badgeCall.innerText = `Call Logged: ${duration} Mins`;
         };
 
         btnApprove.onclick = () => {
@@ -478,6 +456,10 @@
             if (!selectedVerdict) return alert("Please select a verdict.");
             if (selectedVerdict === 'rejected' && !inputReason.value) return alert("Provide a rejection reason.");
 
+            if (selectedVerdict === 'approved' && !guarantorCallTime) {
+                return alert("🛑 Stop: You must log the Guarantor Call and duration before approving an application.");
+            }
+
             btnFinalize.disabled = true;
             btnFinalize.innerText = "FINALIZING...";
 
@@ -496,21 +478,21 @@
                 // 1. Update the Database
                 await updateDoc(doc(db, "pending_artisans", selectedId), payload);
 
-                // 2. THE BRIDGE: Trigger the WhatsApp Bot if Approved
-                if (selectedVerdict === 'approved') {
-                    const artisanName = document.getElementById('disp-name').innerText;
-                    const artisanPhone = document.getElementById('disp-phone').innerText;
+                // 2. THE BRIDGE: Trigger the WhatsApp Bot for BOTH Approved and Rejected
+                const artisanName = document.getElementById('disp-name').innerText;
+                const artisanPhone = document.getElementById('disp-phone').innerText;
+                const reasonStr = selectedVerdict === 'rejected' ? inputReason.value : null;
 
-                    // Replace with your actual deployed Flask backend URL
-                    fetch('https://baymax-840733521710.europe-west1.run.app/admin/notify-approval', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone: artisanPhone,
-                            name: artisanName
-                        })
-                    }).catch(err => console.error("Failed to notify bot:", err));
-                }
+                fetch('https://baymax-840733521710.europe-west1.run.app/admin/notify-verdict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: artisanPhone,
+                        name: artisanName,
+                        status: selectedVerdict,
+                        reason: reasonStr
+                    })
+                }).catch(err => console.error("Failed to notify bot:", err));
 
                 reviewPanel.style.display = 'none';
                 emptyState.style.display = 'flex';
@@ -533,7 +515,13 @@
             inputReason.value = "";
         }
 
-        document.getElementById('btn-signout').onclick = () => signOut(auth).then(() => window.location.href = 'index.html');
+        document.getElementById('btn-signout').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Sign out failed:", error);
+            }
+        });
 
     </script>
 </body>

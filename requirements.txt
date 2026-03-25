@@ -16,3 +16,5 @@ requests==2.32.5
 urllib3==2.6.3
 Werkzeug==3.1.4
 google-cloud-firestore
+flask-cors
+firebase-admin

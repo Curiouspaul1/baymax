@@ -75,15 +75,26 @@ def send_image(to, image_id):
         print(f"Failed to send image: {e}")
 
 
-def send_template_message(to_number, template_name, name_var, link_var):
+def send_template_message(to_number, template_name, params_dict):
     """
-    Sends an approved Meta Template message, bypassing the 24-hour window.
+    Sends an approved Meta Template message using named parameters.
+    params_dict: A dictionary mapping Meta parameter names to their values.
+     e.g., {"name": "Paul", "group_link": "https..."}
     """
-    token = os.getenv("TOKEN")  # Your permanent Meta API token
-    phone_number_id = os.getenv("PHONE_NUMBER_ID")  # Your WhatsApp Bot phone ID
+    token = os.getenv("TOKEN")
+    phone_number_id = os.getenv("PHONE_NUMBER_ID")
 
-    url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    url = f"https://graph.facebook.com/v23.0/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # Dynamically build the parameters list keeping YOUR named structure
+    parameters_list = [
+        {"type": "text", "parameter_name": key, "text": str(value)}
+        for key, value in params_dict.items()
+    ]
 
     payload = {
         "messaging_product": "whatsapp",
@@ -91,18 +102,12 @@ def send_template_message(to_number, template_name, name_var, link_var):
         "type": "template",
         "template": {
             "name": template_name,
-            "language": {
-                "code": "en"  # Must match your Meta template language exactly
-            },
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": name_var},  # Fills in {{1}}
-                        {"type": "text", "text": link_var},  # Fills in {{2}}
-                    ],
-                }
-            ],
+            "language": {"code": "en"},
+            "components": (
+                [{"type": "body", "parameters": parameters_list}]
+                if parameters_list
+                else []
+            ),
         },
     }
 
