@@ -2,3 +2,4 @@ env/
 venv/
 *.env
 *t.sh
+*__pycache__

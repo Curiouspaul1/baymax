@@ -8,7 +8,10 @@ import string
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 
-from utils import parse_message, send_message, ParsedMessage, send_image
+from utils import (
+    parse_message, send_message,
+    ParsedMessage, send_image, send_template_message
+)
 
 # Updated db_manager imports (removed old save_artisan_application)
 from db_manager import (
@@ -392,6 +395,30 @@ def payload():
     else:
         print("SIGNATURE MISMATCH")
         return "", 403
+
+
+@app.post("/admin/notify-approval")
+def notify_approval():
+    data = request.get_json(force=True)
+    artisan_phone = data.get("phone")
+    artisan_name = data.get("name")
+
+    if not artisan_phone:
+        return {"error": "Phone number missing"}, 400
+
+    # Ensure the phone number is clean for the API (e.g., remove the +)
+    formatted_phone = artisan_phone.replace("+", "").replace(" ", "")
+
+    # Fire the official Meta Template
+    # Ensure "artisan_approval_alert" matches exactly what you named it in Meta
+    send_template_message(
+        to_number=formatted_phone,
+        template_name="artisan_approval",
+        name_var=artisan_name,
+        link_var=ARTISAN_GROUP_INVITE_LINK
+    )
+
+    return {"status": "success"}, 200
 
 
 if __name__ == "__main__":
