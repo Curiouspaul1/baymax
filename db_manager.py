@@ -73,26 +73,63 @@ def save_artisan_application(phone, location, skill, experience, video_id):
         print(f"Firestore Error: {e}")
 
 
-def approve_artisan_in_db(phone):
-    """Marks an artisan application as approved"""
-    try:
-        doc_ref = db.collection("artisan_applications").document(phone)
-        doc_ref.update(
-            {"status": "APPROVED", "approved_at": firestore.SERVER_TIMESTAMP}
-        )
-    except Exception as e:
-        print(f"Firestore Error: {e}")
+def _format_phone_for_db(whatsapp_phone):
+    """
+    Helper function to convert international WhatsApp format (23480...) 
+    to the local Nigerian format (080...) stored in Firestore.
+    """
+    phone = str(whatsapp_phone).replace("+", "")
+    if phone.startswith("234") and len(phone) == 13:
+        return "0" + phone[3:]
+    return phone
 
 
 def get_artisan_profile(phone):
     """Fetches an artisan's profile from Firestore to create their ID card"""
     try:
-        doc = db.collection("artisan_applications").document(phone).get()
-        if doc.exists:
-            return doc.to_dict()
+        local_phone = _format_phone_for_db(phone)
+        query = db.collection("pending_artisans")\
+                  .where("personalDetails.phoneNumber", "==", local_phone)\
+                  .order_by("createdAt", direction=firestore.Query.DESCENDING)\
+                  .limit(1)
+
+        docs = query.stream()
+        latest_doc = next(docs, None)
+
+        if latest_doc:
+            return latest_doc.to_dict()
+
     except Exception as e:
-        print(f"Firestore Error: {e}")
+        print(f"Firestore Error getting profile: {e}")
+
     return None
+
+
+def approve_artisan_in_db(phone):
+    """Marks an artisan application as approved via the WhatsApp Bot Fallback"""
+    try:
+        local_phone = _format_phone_for_db(phone)
+
+        # Find the document first
+        query = db.collection("pending_artisans")\
+                  .where("personalDetails.phoneNumber", "==", local_phone)\
+                  .limit(1)
+
+        docs = query.stream()
+        doc_to_update = next(docs, None)
+
+        if doc_to_update:
+            doc_to_update.reference.update({
+                "status": "approved",
+                "audit.verdictMadeAt": firestore.SERVER_TIMESTAMP,
+                "audit.verdictMadeBy": "WhatsApp Bot (Manual Command)"
+            })
+            return True
+
+    except Exception as e:
+        print(f"Firestore Error approving artisan: {e}")
+
+    return False
 
 
 def complete_request_in_db(ref_id, artisan_phone):
