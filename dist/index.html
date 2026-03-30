@@ -269,7 +269,33 @@
                     </div>
                 </div>
             </section>
+            <section class="space-y-4 pb-2">
+                <div
+                    class="flex items-start gap-3 bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+                    <input id="guarantorConsent" type="checkbox" required
+                        class="mt-1 w-5 h-5 text-primary bg-white focus:ring-primary-container border-outline-variant rounded cursor-pointer" />
+                    <label for="guarantorConsent"
+                        class="text-[11px] text-on-surface-variant leading-relaxed cursor-pointer select-none">
+                        <strong>Guarantor Authorization:</strong> I confirm that I have obtained explicit permission
+                        from my stated guarantor to share their personal contact and residential details with Handees
+                        for verification purposes.
+                    </label>
+                </div>
 
+                <div
+                    class="flex items-start gap-3 bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+                    <input id="dataConsent" type="checkbox" required
+                        class="mt-1 w-5 h-5 text-primary bg-white focus:ring-primary-container border-outline-variant rounded cursor-pointer" />
+                    <label for="dataConsent"
+                        class="text-[11px] text-on-surface-variant leading-relaxed cursor-pointer select-none">
+                        <strong>Data Processing Consent:</strong> I agree to the <a href="terms.html" target="_blank"
+                            class="text-primary font-bold hover:underline">Terms of Use</a> and <a href="privacy.html"
+                            target="_blank" class="text-primary font-bold hover:underline">Privacy Policy</a>. I
+                        explicitly consent to Handees collecting and processing my Sensitive Personal Data (including my
+                        NIN and facial verification video) in accordance with the NDPA 2023.
+                    </label>
+                </div>
+            </section>
             <div class="pt-4">
                 <button id="submitBtn" type="submit" disabled
                     class="w-full py-5 bg-surface-container-high text-on-surface-variant font-black text-lg rounded-lg transition-all flex items-center justify-center gap-3 opacity-50 cursor-not-allowed">
