@@ -36,7 +36,8 @@ ARTISAN_GROUP_INVITE_LINK = os.getenv(
 )
 ONBOARDING_FORM_URL = os.getenv(
     "ONBOARDING_FORM_URL", "https://your-hosted-form-link.com"
-)  # <-- NEW ENV VAR
+)
+TERMS_OF_USE_URL = os.getenv('TERMS_OF_USE_URL', '')
 
 app = Flask(__name__)
 r = redis.Redis(
@@ -321,7 +322,7 @@ def payload():
             cat = r.get(data_key_cat)
             desc = r.get(data_key_desc)
 
-            response_text = f"Please confirm your request details:\n\n🔧 *Service:* {cat}\n📝 *Issue:* {desc}\n📸 *Photo:* {has_photo}\n\nReply *YES* to submit request.\nReply *CANCEL* to start over."
+            response_text = f"Please confirm your request details:\n\n🔧 *Service:* {cat}\n📝 *Issue:* {desc}\n📸 *Photo:* {has_photo}\n\nReply *YES* to submit request.\nReply *CANCEL* to start over. \nBy replying *YES* you also accept the customer terms of use of the handees platform, as stated here: {TERMS_OF_USE_URL}"
             r.set(state_key, STATE_WAITING_CONFIRMATION, ex=900)
 
         elif current_state == STATE_WAITING_CONFIRMATION:
