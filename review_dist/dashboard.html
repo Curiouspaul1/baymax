@@ -446,6 +446,18 @@
                     }
                 };
 
+                if (selectedVerdict === 'approved') {
+                    await addDoc(collection(db, "verified_merchants"), {
+                        originalAppId: selectedId,
+                        name: activeMerchantFullData.businessDetails?.name,
+                        category: activeMerchantFullData.businessDetails?.category,
+                        phone: activeMerchantFullData.businessDetails?.phone,
+                        location: activeMerchantFullData.businessDetails?.address,
+                        rating: "5.0", // Baseline starting rating
+                        verifiedAt: serverTimestamp()
+                    });
+                }
+
                 // 1. Commit to Firestore first
                 await updateDoc(doc(db, "pending_merchants", selectedId), payload);
 

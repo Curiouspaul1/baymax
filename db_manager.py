@@ -349,3 +349,21 @@ def check_application_eligibility(nin):
         print(f"Firestore Error during eligibility check: {e}")
         # Fail safe if database errors out so you don't block legitimate users during pilot testing
         return True, "Eligible"
+
+
+def get_verified_merchant_by_phone(phone_number):
+    """Fetches a verified merchant profile for dashboard routing."""
+    local_phone = phone_number.replace("+", "")
+    if local_phone.startswith("234") and len(local_phone) == 13:
+        local_phone = "0" + local_phone[3:]
+        
+    docs = db.collection("verified_merchants").where("phone", "==", local_phone).limit(1).stream()
+    merchant = next(docs, None)
+    return merchant.to_dict() if merchant else None
+
+
+def get_verified_merchants_by_category(category_name):
+    """Fetches all live merchants in a specific category for customers."""
+    docs = db.collection("verified_merchants").where("category", "==", category_name).stream()
+    # Return list of dicts, injecting the Firestore Document ID as the reference ID
+    return [{"id": d.id[:5].upper(), "doc_id": d.id, **d.to_dict()} for d in docs]

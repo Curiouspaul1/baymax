@@ -14,7 +14,9 @@ from flask import Flask, request, abort
 from db_manager import (
     db,
     check_application_eligibility,
-    get_pending_merchant_status
+    get_pending_merchant_status,
+    get_verified_merchant_by_phone,
+    get_verified_merchants_by_category,
 )
 from utils import (
     parse_message,
@@ -57,6 +59,8 @@ CATEGORIES = {
     "1": "Barbershop / Salon",
     "2": "Mechanic Garage",
     "3": "Spa / Aesthetics",
+    "4": "Fashion Designer",
+    "5": "Nailtech"
 }
 
 # Dummy Database (Now includes Ratings)
@@ -241,14 +245,16 @@ def payload():
                     "What are you looking for today?\n"
                     "1️⃣ Barbershop / Salon\n"
                     "2️⃣ Mechanic Garage\n"
-                    "3️⃣ Spa / Aesthetics\n\n"
+                    "3️⃣ Spa / Aesthetics\n"
+                    "4️⃣ Fashion Designer\n"
+                    "5️⃣ Nailtech\n\n"
                     "Reply with a *number*:"
                 )
                 r.set(state_key, STATE_WAITING_CATEGORY, ex=900)
 
             elif text_body == "2":
                 # Route to Merchant Flow
-                profile = get_merchant_profile(sender_id)
+                profile = get_verified_merchant_by_phone(sender_id)
                 if profile:
                     # Existing Approved Merchant -> Standard Dashboard Only (No status check needed)
                     response_text = (
@@ -296,7 +302,7 @@ def payload():
         # 🏢 MERCHANT DASHBOARD FLOW
         # ==========================================
         elif current_state == STATE_MERCHANT_DASHBOARD:
-            profile = get_merchant_profile(sender_id)
+            profile = get_verified_merchant_by_phone(sender_id)
             if text_body == "1":
                 # Check Redis for a pending booking for this specific merchant
                 pending_booking = r.get(f"merchant:{sender_id}:pending_booking")
@@ -359,7 +365,9 @@ def payload():
                 selected_cat = CATEGORIES[text_body]
                 r.set(f"handees:{sender_id}:category", selected_cat, ex=900)
 
-                merchants = DUMMY_MERCHANTS.get(selected_cat, [])
+                # Fetch from live Firestore collection
+                merchants = get_verified_merchants_by_category(selected_cat)
+
                 if not merchants:
                     response_text = f"No verified shops found for {selected_cat} yet. Type 'RESET' to start over."
                 else:
@@ -367,39 +375,45 @@ def payload():
                         f"Here are the verified {selected_cat} shops near you:\n"
                     ]
 
-                    # Inject Ratings into the list
+                    # Inject dynamic list
                     for m in merchants:
                         msg_lines.append(
-                            f"{m['id']}️⃣ *{m['name']}* ({m['location']}) • ⭐ {m['rating']}"
+                            f"*{m['id']}* - {m['name']} ({m['location']}) • ⭐ {m.get('rating', '5.0')}"
                         )
 
-                    msg_lines.append("\nReply with the *number* of the shop to book:")
+                    msg_lines.append(
+                        "\nReply with the *ID* (e.g., A7F9B) of the shop to book:"
+                    )
                     response_text = "\n".join(msg_lines)
                     r.set(state_key, STATE_SELECTING_MERCHANT, ex=900)
             else:
-                response_text = "⚠️ Invalid selection. Please reply with 1, 2, or 3."
+                response_text = (
+                    "⚠️ Invalid selection. Please reply with 1, 2, 3, 4, or 5."
+                )
 
         elif current_state == STATE_SELECTING_MERCHANT:
             selected_cat = r.get(f"handees:{sender_id}:category")
-            merchants = DUMMY_MERCHANTS.get(selected_cat, [])
+            merchants = get_verified_merchants_by_category(selected_cat)
 
-            selected_merchant = next(
-                (m for m in merchants if str(m["id"]) == text_body), None
-            )
+            # Match against the short ID
+            selected_merchant = next((m for m in merchants if m["id"] == text_body_upper), None)
 
             if selected_merchant:
-                r.set(
-                    f"customer:{sender_id}:selected_merchant",
-                    selected_merchant["phone"],
-                    ex=900,
-                )
+                # Format phone to international for WhatsApp routing
+                raw_phone = selected_merchant["phone"]
+                if raw_phone.startswith("0"):
+                    routing_phone = "234" + raw_phone[1:]
+                else:
+                    routing_phone = raw_phone
+
+                r.set(f"customer:{sender_id}:selected_merchant", routing_phone, ex=900)
                 response_text = (
                     f"Great! You selected *{selected_merchant['name']}*.\n\n"
                     f"What time would you like to book for today? (e.g., *2:00 PM* or *Now*)"
                 )
                 r.set(state_key, STATE_SELECTING_TIME, ex=900)
             else:
-                response_text = "⚠️ Invalid shop number. Please try again."
+                response_text = "⚠️ Invalid shop ID. Please try again."
 
         elif current_state == STATE_SELECTING_TIME:
             requested_time = text_body.strip()
