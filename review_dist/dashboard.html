@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Handees Admin | Vetting Command</title>
+    <title>Handees Admin | Merchant Vetting Command</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -91,13 +91,13 @@
     <aside class="flex flex-col fixed left-0 top-0 h-full z-40 bg-slate-50 h-screen w-64 border-r border-slate-200/50">
         <div class="p-6">
             <h1 class="text-xl font-black text-slate-800 uppercase tracking-widest mb-1">Handees Admin</h1>
-            <p class="font-medium text-xs tracking-tight text-slate-500 uppercase">Vetting Officer</p>
+            <p class="font-medium text-xs tracking-tight text-slate-500 uppercase">Merchant Verification Desk</p>
         </div>
         <nav class="flex-1 px-4 space-y-2 mt-4">
             <a class="flex items-center gap-3 px-4 py-3 text-yellow-700 font-bold border-r-4 border-yellow-500 bg-yellow-50/50"
                 href="#">
                 <span class="material-symbols-outlined">dashboard</span>
-                <span class="text-sm">Dashboard</span>
+                <span class="text-sm">Storefront Queue</span>
             </a>
             <button id="btn-signout"
                 class="w-full mt-auto flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all border-t border-slate-200/50">
@@ -115,7 +115,7 @@
                     class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input
                     class="w-full bg-slate-50 border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Search applications..." type="text" />
+                    placeholder="Search businesses..." type="text" />
             </div>
         </div>
         <div class="flex items-center gap-3">
@@ -139,46 +139,67 @@
 
         <section id="review-panel" style="display: none;" class="flex-1 bg-white flex flex-col overflow-y-auto">
             <div class="p-16 pb-8">
-                <span class="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-4 block">Application
-                    Profile</span>
+                <span class="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-4 block">Partner
+                    Verification Profile</span>
                 <h2 id="disp-name-title" class="text-5xl font-black text-on-surface tracking-tighter mb-2">---</h2>
                 <p id="disp-trade-title" class="text-slate-500 flex items-center gap-2 text-lg">---</p>
             </div>
 
-            <div class="px-16 space-y-20 pb-48 max-w-6xl">
+            <div class="px-16 space-y-16 pb-48 max-w-6xl">
                 <div>
                     <div class="flex items-center gap-4 mb-10">
-                        <h3 class="text-2xl font-black tracking-tight">Personal Dossier</h3>
+                        <h3 class="text-2xl font-black tracking-tight">Business Profile</h3>
+                        <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-16 gap-y-10">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Registered
+                                Business Name</label>
+                            <p id="disp-biz-name" class="text-on-surface text-lg font-medium">---</p>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Industry
+                                Category</label>
+                            <p id="disp-category" class="text-on-surface text-lg font-medium text-primary">---</p>
+                        </div>
+                        <div class="col-span-2">
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Physical
+                                Shop Outlet Address</label>
+                            <p id="disp-address" class="text-on-surface text-lg font-medium leading-relaxed">---</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-4 mb-10">
+                        <h3 class="text-2xl font-black tracking-tight">Owner Auditing Credentials</h3>
                         <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-x-16 gap-y-10">
                         <div>
                             <label
                                 class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Full
-                                Legal Name</label>
-                            <p id="disp-name" class="text-on-surface text-lg font-medium">---</p>
+                                Legal Representative Name</label>
+                            <p id="disp-owner-name" class="text-on-surface text-lg font-medium">---</p>
                         </div>
                         <div>
                             <label
-                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Residential
-                                Address</label>
-                            <p id="disp-address" class="text-on-surface text-lg font-medium leading-relaxed">---</p>
-                        </div>
-                        <div>
-                            <label
-                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Contact
-                                Number</label>
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">WhatsApp
+                                Contact Number</label>
                             <p id="disp-phone" class="text-on-surface text-lg font-medium">---</p>
                         </div>
                         <div>
                             <label
                                 class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">National
-                                ID (NIN)</label>
+                                Identity Number (NIN)</label>
                             <div class="flex items-center gap-4">
                                 <p id="disp-nin" class="text-on-surface text-lg font-medium font-mono">---</p>
                                 <button disabled
                                     class="text-[10px] font-black bg-slate-200 text-slate-400 px-3 py-1 rounded cursor-not-allowed">
-                                    VERIFY (COMING SOON)
+                                    VERIFIED
                                 </button>
                             </div>
                         </div>
@@ -187,68 +208,19 @@
 
                 <div>
                     <div class="flex items-center gap-4 mb-10">
-                        <h3 class="text-2xl font-black tracking-tight">Vetting Media</h3>
+                        <h3 class="text-2xl font-black tracking-tight">Location Inspection Media</h3>
                         <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
                     </div>
                     <div class="grid grid-cols-3 gap-8">
-                        <div>
-                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">1.
-                                Verification Video</label>
+                        <div class="col-span-2">
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">10-Second
+                                Physical Outlet Verification Video</label>
                             <div id="media-video-container"
-                                class="aspect-[3/4] bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center">
-                                <p class="text-slate-500 text-[10px]">Loading...</p>
+                                class="aspect-video bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-200">
+                                <p class="text-slate-500 text-[10px]">Loading Video Asset Link...</p>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">2.
-                                Union ID Card</label>
-                            <div id="media-union-container"
-                                class="aspect-[3/4] bg-slate-50 border border-dashed border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center">
-                                <p class="text-slate-300 text-[10px]">Not Provided</p>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">3.
-                                Freedom Certificate</label>
-                            <div id="media-cert-container"
-                                class="aspect-[3/4] bg-slate-50 border border-dashed border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center">
-                                <p class="text-slate-300 text-[10px]">Not Provided</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center gap-4 mb-10">
-                        <h3 class="text-2xl font-black tracking-tight">Guarantor Verification</h3>
-                        <div class="flex-1 h-[1px] bg-slate-100 ml-4"></div>
-                    </div>
-                    <div class="bg-slate-50 p-12 rounded-3xl">
-                        <div class="flex justify-between items-start mb-6">
-                            <div class="space-y-1">
-                                <h4 id="disp-g-name" class="text-xl font-bold text-slate-900">---</h4>
-                                <p id="disp-g-phone" class="text-sm font-bold text-yellow-700">---</p>
-                                <p id="disp-g-rel" class="text-xs text-slate-500 font-medium">---</p>
-                            </div>
-                            <div class="flex flex-col items-end gap-3">
-                                <div class="flex items-center gap-2">
-                                    <div class="flex flex-col items-end">
-                                        <label class="text-[9px] font-black text-slate-400 uppercase mb-1">Duration
-                                            (Mins)</label>
-                                        <input id="input-call-duration" type="number" placeholder="0"
-                                            class="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-primary outline-none">
-                                    </div>
-                                    <button id="btn-log-call"
-                                        class="px-4 py-2 mt-4 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-lg hover:bg-slate-100 transition-all flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-sm">call</span> LOG CALL
-                                    </button>
-                                </div>
-                                <span id="call-status-badge"
-                                    class="hidden px-3 py-1 bg-green-100 text-green-700 text-[9px] font-black rounded-full uppercase">Call
-                                    Verified</span>
-                            </div>
-                        </div>
-                        <p id="disp-g-address" class="text-slate-600 text-lg italic leading-relaxed">---</p>
                     </div>
                 </div>
             </div>
@@ -259,19 +231,21 @@
                     <div class="flex-1 flex items-center gap-12">
                         <div class="flex-1 flex gap-4">
                             <button id="btn-approve"
-                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-green-600 hover:text-white transition-all">APPROVE</button>
+                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-green-600 hover:text-white transition-all">APPROVE
+                                LISTING</button>
                             <button id="btn-reject"
-                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-red-600 hover:text-white transition-all">REJECT</button>
+                                class="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-xl hover:bg-red-600 hover:text-white transition-all">REJECT
+                                / COOL DOWN</button>
                         </div>
                         <div class="w-72">
                             <select id="input-reason" style="display: none;"
                                 class="w-full bg-slate-100 border-none rounded-xl text-sm py-4 font-bold focus:ring-2 focus:ring-primary outline-none">
-                                <option value="">Select rejection reason...</option>
-                                <option value="Fake Guarantor">Fake Guarantor</option>
+                                <option value="">Select rejection infraction...</option>
+                                <option value="Fake Profile">Fake Profile</option>
                                 <option value="Invalid NIN">Invalid NIN</option>
                                 <option value="Identity Mismatch">Identity Mismatch</option>
+                                <option value="Fraudulent Outlet">Fraudulent Outlet</option>
                                 <option value="Poor Video Quality">Poor Video Quality</option>
-                                <option value="Invalid Documents">Invalid Documents</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -285,8 +259,8 @@
 
         <section id="empty-state" class="flex-1 flex items-center justify-center bg-white text-slate-300">
             <div class="text-center">
-                <span class="material-symbols-outlined text-6xl">folder_open</span>
-                <p class="font-medium mt-2">Select an application to review</p>
+                <span class="material-symbols-outlined text-6xl">storefront</span>
+                <p class="font-medium mt-2">Select a business profile to initiate auditing</p>
             </div>
         </section>
     </main>
@@ -294,10 +268,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
-        // PASTE YOUR FIREBASE CONFIG HERE
         const firebaseConfig = {
             apiKey: "AIzaSyAilatYX6E6A-W7iw83o9lxDiAF99EfYDI",
             authDomain: "handees-dev.firebaseapp.com",
@@ -312,15 +285,12 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // UI Binding
+        // UI Target Component Mappings
         const queueList = document.getElementById('queue-list');
         const queueCount = document.getElementById('queue-count');
         const reviewPanel = document.getElementById('review-panel');
         const emptyState = document.getElementById('empty-state');
         const btnFinalize = document.getElementById('btn-finalize');
-        const inputCallDuration = document.getElementById('input-call-duration');
-        const btnLogCall = document.getElementById('btn-log-call');
-        const badgeCall = document.getElementById('call-status-badge');
         const inputReason = document.getElementById('input-reason');
         const btnApprove = document.getElementById('btn-approve');
         const btnReject = document.getElementById('btn-reject');
@@ -329,114 +299,91 @@
 
         let selectedId = null;
         let selectedVerdict = null;
-        let guarantorCallTime = null;
-        let currentNIN = "";
+        let activeMerchantFullData = null;
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'index.html';
             else {
                 document.getElementById('admin-email-display').innerText = user.email;
-                fetchQueue();
+                listenToLiveQueue();
             }
         });
 
-        async function fetchQueue() {
-            try {
-                const q = query(collection(db, "pending_artisans"), where("status", "==", "pending_review"));
-                const snap = await getDocs(q);
-                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // REFACTORED: Converted to dynamic real-time onSnapshot tracking pending_merchants
+        function listenToLiveQueue() {
+            const q = query(collection(db, "pending_merchants"), where("status", "==", "pending_review"));
+
+            onSnapshot(q, (snapshot) => {
+                const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 queueCount.innerText = list.length;
                 queueList.innerHTML = '';
-                list.forEach(a => {
+
+                list.forEach(merchant => {
+                    const biz = merchant.businessDetails || {};
                     const card = document.createElement('div');
                     card.className = "p-5 bg-white/50 border border-transparent rounded-xl cursor-pointer hover:border-slate-200 mb-2 transition-all";
-                    card.innerHTML = `<p class="text-sm font-bold text-slate-900">${a.personalDetails.fullName}</p><p class="text-[10px] text-slate-500 uppercase tracking-wider">${a.professionalProfile.trade}</p>`;
+                    if (selectedId === merchant.id) card.classList.add('active-card');
+
+                    card.innerHTML = `
+                        <p class="text-sm font-bold text-slate-900">${biz.name || 'Unnamed Outlet'}</p>
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">${biz.category || 'Unassigned Field'}</p>
+                    `;
+
                     card.onclick = () => {
                         document.querySelectorAll('#queue-list div').forEach(d => d.classList.remove('active-card'));
                         card.classList.add('active-card');
-                        displayArtisan(a);
+                        displayMerchantWorkspace(merchant);
                     };
                     queueList.appendChild(card);
                 });
-            } catch (e) {
-                if (e.code === 'permission-denied') {
-                    alert("Unauthorized Access Attempt.");
+            }, (err) => {
+                if (err.code === 'permission-denied') {
+                    alert("Unauthorized Session Cleared.");
                     signOut(auth).then(() => window.location.href = 'index.html');
                 }
-            }
+            });
         }
 
-        async function displayArtisan(a) {
-            selectedId = a.id;
+        async function displayMerchantWorkspace(merchant) {
+            selectedId = merchant.id;
             selectedVerdict = null;
-            guarantorCallTime = null;
-            currentNIN = a.personalDetails.nin;
-            badgeCall.style.display = 'none';
-            inputCallDuration.value = "";
+            activeMerchantFullData = merchant;
             resetVerdictUI();
 
             emptyState.style.display = 'none';
             reviewPanel.style.display = 'flex';
 
-            document.getElementById('disp-name-title').innerText = a.personalDetails.fullName;
-            document.getElementById('disp-trade-title').innerText = a.professionalProfile.trade;
-            document.getElementById('disp-name').innerText = a.personalDetails.fullName;
-            document.getElementById('disp-phone').innerText = a.personalDetails.phoneNumber;
-            document.getElementById('disp-nin').innerText = a.personalDetails.nin;
-            document.getElementById('disp-address').innerText = a.personalDetails.address;
-            document.getElementById('disp-g-name').innerText = a.guarantor.name;
-            document.getElementById('disp-g-phone').innerText = a.guarantor.phone || "No Phone Provided";
-            document.getElementById('disp-g-rel').innerText = a.guarantor.relationship;
-            document.getElementById('disp-g-address').innerText = a.guarantor.address;
+            const biz = merchant.businessDetails || {};
+            const owner = merchant.ownerDetails || {};
 
-            // Load Video
+            // Update Dossier UI fields with B2B payload blocks
+            document.getElementById('disp-name-title').innerText = biz.name || 'Unnamed Outlet';
+            document.getElementById('disp-trade-title').innerText = biz.category || 'Unassigned Field';
+            document.getElementById('disp-biz-name').innerText = biz.name || 'N/A';
+            document.getElementById('disp-category').innerText = biz.category || 'N/A';
+            document.getElementById('disp-address').innerText = biz.address || 'N/A';
+            document.getElementById('disp-owner-name').innerText = owner.fullName || 'N/A';
+            document.getElementById('disp-phone').innerText = biz.phone || 'N/A';
+            document.getElementById('disp-nin').innerText = owner.nin || 'N/A';
+
+            // Extract Verification Video target tracking path string
             const videoBox = document.getElementById('media-video-container');
-            videoBox.innerHTML = '<p class="text-slate-500 text-[10px] animate-pulse">STREAMING...</p>';
-            try {
-                const url = await getDownloadURL(ref(storage, a.professionalProfile.verificationVideoPath));
-                videoBox.innerHTML = `<video src="${url}" controls class="w-full h-full object-cover"></video>`;
-            } catch (e) { videoBox.innerHTML = 'Error Loading Video'; }
+            videoBox.innerHTML = '<p class="text-slate-500 text-[10px] animate-pulse">ESTABLISHING STREAM...</p>';
 
-            // Load Union ID
-            const unionBox = document.getElementById('media-union-container');
-            if (a.credentials?.unionIdPath) {
-                const url = await getDownloadURL(ref(storage, a.credentials.unionIdPath));
-                unionBox.innerHTML = `<img src="${url}" class="w-full h-full object-cover cursor-zoom-in" onclick="window.open('${url}')">`;
-            } else { unionBox.innerHTML = '<p class="text-slate-300 text-[10px]">Not Provided</p>'; }
-
-            // Load Freedom Cert
-            const certBox = document.getElementById('media-cert-container');
-            if (a.credentials?.freedomCertPath) {
-                const url = await getDownloadURL(ref(storage, a.credentials.freedomCertPath));
-                certBox.innerHTML = `<img src="${url}" class="w-full h-full object-cover cursor-zoom-in" onclick="window.open('${url}')">`;
-            } else { certBox.innerHTML = '<p class="text-slate-300 text-[10px]">Not Provided</p>'; }
+            if (merchant.verificationVideoPath) {
+                try {
+                    const url = await getDownloadURL(ref(storage, merchant.verificationVideoPath));
+                    videoBox.innerHTML = `<video src="${url}" controls class="w-full h-full object-contain"></video>`;
+                } catch (e) {
+                    videoBox.innerHTML = '<p class="text-red-500 text-xs p-4">Error Loading Inspection Video File</p>';
+                }
+            } else {
+                videoBox.innerHTML = '<p class="text-slate-400 text-xs p-4">No Video Footprint Embedded inside Document Registry</p>';
+            }
         }
 
-        // NIN Modal Controls (Disabled for now, logic retained)
-        window.openNINModal = async () => {
-            ninModal.classList.remove('hidden');
-            ninContent.innerHTML = `
-                <div class="flex flex-col items-center py-12">
-                    <div class="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-slate-500 font-medium mt-4">Querying NIMC Database...</p>
-                </div>
-            `;
-            // Simulation logic kept ready for real API
-        };
-
+        // NIMC Mock Endpoint Controls placeholder
         window.closeNINModal = () => ninModal.classList.add('hidden');
-
-        btnLogCall.onclick = () => {
-            const duration = inputCallDuration.value;
-            if (!duration || parseInt(duration) <= 0) {
-                alert("⚠️ Please enter a valid call duration (in minutes) before logging the call.");
-                inputCallDuration.focus();
-                return;
-            }
-            guarantorCallTime = new Date();
-            badgeCall.style.display = 'block';
-            badgeCall.innerText = `Call Logged: ${duration} Mins`;
-        };
 
         btnApprove.onclick = () => {
             selectedVerdict = 'approved';
@@ -453,15 +400,11 @@
         };
 
         btnFinalize.onclick = async () => {
-            if (!selectedVerdict) return alert("Please select a verdict.");
-            if (selectedVerdict === 'rejected' && !inputReason.value) return alert("Provide a rejection reason.");
-
-            if (selectedVerdict === 'approved' && !guarantorCallTime) {
-                return alert("🛑 Stop: You must log the Guarantor Call and duration before approving an application.");
-            }
+            if (!selectedVerdict) return alert("Please map a validation verdict status entry.");
+            if (selectedVerdict === 'rejected' && !inputReason.value) return alert("Please select an operational infraction reason.");
 
             btnFinalize.disabled = true;
-            btnFinalize.innerText = "FINALIZING...";
+            btnFinalize.innerText = "FINALIZING DOCUMENT TRANSACTION...";
 
             try {
                 const payload = {
@@ -469,39 +412,38 @@
                     audit: {
                         verdictMadeAt: serverTimestamp(),
                         verdictMadeBy: auth.currentUser.email,
-                        guarantorContactedAt: guarantorCallTime || null,
-                        guarantorCallDuration: inputCallDuration.value ? parseInt(inputCallDuration.value) : null,
                         rejectionReason: selectedVerdict === 'rejected' ? inputReason.value : null
                     }
                 };
 
-                // 1. Update the Database
-                await updateDoc(doc(db, "pending_artisans", selectedId), payload);
+                // 1. Commit to Firestore first
+                await updateDoc(doc(db, "pending_merchants", selectedId), payload);
 
-                // 2. THE BRIDGE: Trigger the WhatsApp Bot for BOTH Approved and Rejected
-                const artisanName = document.getElementById('disp-name').innerText;
-                const artisanPhone = document.getElementById('disp-phone').innerText;
-                const reasonStr = selectedVerdict === 'rejected' ? inputReason.value : null;
+                // 2. FORCE the browser to wait for the POST request to completely clear the server
+                try {
+                    const response = await fetch('https://baymax-840733521710.europe-west1.run.app/api/notify-verdict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: activeMerchantFullData.businessDetails?.phone,
+                            name: activeMerchantFullData.ownerDetails?.fullName,
+                            status: selectedVerdict,
+                            reason: selectedVerdict === 'rejected' ? inputReason.value : null
+                        })
+                    });
+                    console.log("Server webhook status:", response.status);
+                } catch (err) {
+                    console.error("Webhook notification worker communication failure logs:", err);
+                }
 
-                fetch('https://baymax-840733521710.europe-west1.run.app/admin/notify-verdict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: artisanPhone,
-                        name: artisanName,
-                        status: selectedVerdict,
-                        reason: reasonStr
-                    })
-                }).catch(err => console.error("Failed to notify bot:", err));
-
+                // 3. UI transitions safely AFTER the network operations have closed
                 reviewPanel.style.display = 'none';
                 emptyState.style.display = 'flex';
-                fetchQueue();
-                alert("Decision recorded. Artisan notified via WhatsApp.");
+                alert("Decision successfully saved. Partner notification lifecycle activated via WhatsApp.");
 
             } catch (e) {
                 console.error(e);
-                alert("Error saving decision.");
+                alert("Firestore target update exception execution failure.");
             }
 
             btnFinalize.disabled = false;
@@ -519,10 +461,9 @@
             try {
                 await signOut(auth);
             } catch (error) {
-                console.error("Sign out failed:", error);
+                console.error("Sign out fail:", error);
             }
         });
-
     </script>
 </body>
 

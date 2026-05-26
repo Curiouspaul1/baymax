@@ -1,4 +1,5 @@
 import os
+import datetime
 import hmac
 import redis
 import hashlib
@@ -9,20 +10,12 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 
+from db_manager import check_application_eligibility, get_pending_merchant_status
 from utils import (
-    parse_message, send_message,
-    ParsedMessage, send_image, send_template_message
-)
-
-# Updated db_manager imports (removed old save_artisan_application)
-from db_manager import (
-    log_request,
-    log_proposal,
-    close_request_in_db,
-    approve_artisan_in_db,
-    get_artisan_profile,
-    complete_request_in_db,
-    check_application_eligibility
+    parse_message,
+    send_message,
+    ParsedMessage,
+    send_template_message,
 )
 
 load_dotenv()
@@ -30,58 +23,86 @@ load_dotenv()
 token = os.getenv("VERIFY_TOKEN")
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PASS = os.getenv("REDIS_PASS")
-ADMIN_NO = os.getenv("ADMIN_NO")
-ARTISAN_GROUP_INVITE_LINK = os.getenv(
-    "WHATSAPP_GROUP_LINK", "https://chat.whatsapp.com/NO_INVITE_FOUND"
-)
-ONBOARDING_FORM_URL = os.getenv(
-    "ONBOARDING_FORM_URL", "https://your-hosted-form-link.com"
-)
-TERMS_OF_USE_URL = os.getenv('TERMS_OF_USE_URL', '')
+ONBOARDING_FORM_URL = os.getenv("ONBOARDING_FORM_URL", "https://your-merchant-form.com")
 
 app = Flask(__name__)
 r = redis.Redis(
     host=REDIS_HOST, password=REDIS_PASS, port=6379, db=10, decode_responses=True
 )
-CORS(app, resources={
-    r"/admin/*": {"origins": "https://handeesartisanreview.netlify.app"},
-    r"/api/*": {"origins": "https://handeesartisan.netlify.app"}
-})
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # --- STATE CONSTANTS ---
 STATE_START = "START"
 STATE_CHOOSING_ROLE = "CHOOSING_ROLE"
-STATE_ARTISAN_PORTAL = "ARTISAN_PORTAL"
-STATE_WAITING_CATEGORY = "WAITING_CATEGORY"
-STATE_WAITING_DESCRIPTION = "WAITING_DESCRIPTION"
-STATE_WAITING_PHOTO = "WAITING_PHOTO"
-STATE_WAITING_CONFIRMATION = "WAITING_CONFIRMATION"
-STATE_ARTISAN_PROPOSING = "ARTISAN_PROPOSING"
 
+# Customer States
+STATE_WAITING_CATEGORY = "WAITING_CATEGORY"
+STATE_SELECTING_MERCHANT = "SELECTING_MERCHANT"
+STATE_SELECTING_TIME = "SELECTING_TIME"
+
+# Merchant States
+STATE_MERCHANT_DASHBOARD = "MERCHANT_DASHBOARD"
+STATE_MERCHANT_DECIDING = "MERCHANT_DECIDING"
+
+# --- B2B PIVOT DATA ---
 CATEGORIES = {
-    "1": "Plumber",
-    "2": "Electrician",
-    "3": "Carpenter",
-    "4": "AC/Fridge Repair",
-    "5": "Phone/Laptop Repair",
-    "6": "Other",
+    "1": "Barbershop / Salon",
+    "2": "Mechanic Garage",
+    "3": "Spa / Aesthetics",
 }
 
-
-def generate_signature(secret_key, raw_payload):
-    key_bytes = secret_key.encode("utf-8")
-    payload_bytes = raw_payload
-    signature = hmac.new(key_bytes, payload_bytes, hashlib.sha256)
-    return signature.hexdigest()
+# Dummy Database (Now includes Ratings)
+DUMMY_MERCHANTS = {
+    "Barbershop / Salon": [
+        {
+            "id": "1",
+            "name": "Fresh Cuts",
+            "location": "Sabo",
+            "phone": "2348000000001",
+            "rating": "4.8",
+        },
+        {
+            "id": "2",
+            "name": "Elite Clippers",
+            "location": "Akoka",
+            "phone": "2348000000002",
+            "rating": "4.5",
+        },
+    ],
+    "Mechanic Garage": [
+        {
+            "id": "1",
+            "name": "AutoFix Garage",
+            "location": "Yaba",
+            "phone": "2348000000003",
+            "rating": "4.9",
+        }
+    ],
+    "Spa / Aesthetics": [
+        {
+            "id": "1",
+            "name": "Glow Studio",
+            "location": "Onike",
+            "phone": "2348000000004",
+            "rating": "4.7",
+        }
+    ],
+}
 
 
 def generate_ref_id():
     chars = string.ascii_uppercase + string.digits
-    return "HND-" + "".join(random.choices(chars, k=5))
+    return "BK-" + "".join(random.choices(chars, k=5))
 
 
-def generate_pin():
-    return str(random.randint(1000, 9999))
+def get_merchant_profile(phone_number):
+    """Helper function to check if a phone number belongs to a registered merchant.
+    TODO: Swap this out for a Firestore query later."""
+    for category, merchants in DUMMY_MERCHANTS.items():
+        for m in merchants:
+            if m["phone"] == phone_number:
+                return m
+    return None
 
 
 @app.get("/")
@@ -113,7 +134,6 @@ def payload():
             if isinstance(parsed, ParsedMessage):
                 sender_id = parsed.sender_id
                 text_body = parsed.text_body or ""
-                image_id = parsed.image_id
                 msg_type = parsed.msg_type
             else:
                 return "ok", 200
@@ -123,277 +143,305 @@ def payload():
         state_key = f"handees:{sender_id}:state"
         current_state = r.get(state_key) or STATE_START
 
-        data_key_cat = f"handees:{sender_id}:category"
-        data_key_desc = f"handees:{sender_id}:desc"
-        data_key_photo = f"handees:{sender_id}:photo"
-
         response_text = ""
         text_body_upper = text_body.strip().upper() if text_body else ""
 
-        # ==========================================
-        # 👑 ADMIN COMMAND: "APPRV <phone>"
-        # ==========================================
-        if (
-            sender_id == ADMIN_NO
-            and msg_type == "text"
-            and text_body_upper.startswith("APPRV")
-        ):
-            parts = text_body_upper.split()
-            if len(parts) >= 2:
-                target_artisan = parts[1]
-                approve_artisan_in_db(target_artisan)
-                group_link = ARTISAN_GROUP_INVITE_LINK
-                invite_msg = (
-                    f"🎉 *Congratulations!* Your Handees application has been approved.\n\n"
-                    f"Please join the official Handees Artisan network using this link to start receiving jobs:\n{group_link}\n\n"
-                    f"Welcome to the team! 🛠️"
-                )
-                send_message(target_artisan, invite_msg)
-                response_text = (
-                    f"✅ Approved! Invite link successfully sent to {target_artisan}."
-                )
-            else:
-                response_text = "⚠️ Invalid format. Use: APPRV <phone_number>"
-
-            send_message(sender_id, response_text)
-            return "", 200
-
-        # ==========================================
-        # 🤝 ARTISAN HANDSHAKE COMMAND: "DONE <REF> <PIN>"
-        # ==========================================
-        if msg_type == "text" and text_body_upper.startswith("DONE"):
-            parts = text_body_upper.split()
-            if len(parts) == 3:
-                _, target_req, submitted_pin = parts
-                actual_pin = r.get(f"req:{target_req}:pin")
-
-                if actual_pin and actual_pin == submitted_pin:
-                    complete_request_in_db(target_req, sender_id)
-                    response_text = "🎉 *Job Completed!* You have successfully verified the handshake. Thank you for your great work!"
-
-                    cust_id = r.get(f"req:{target_req}:customer")
-                    if cust_id:
-                        cust_msg = f"✅ Your Handees request *{target_req}* has been officially marked as completed by the artisan. Thank you for using Handees!"
-                        send_message(cust_id, cust_msg)
-                else:
-                    response_text = "❌ Invalid PIN or Reference ID. Please check with the customer and try again."
-            else:
-                response_text = (
-                    "⚠️ Format: DONE <REF_ID> <PIN>\n_Example: DONE HND-1A2B 5432_"
-                )
-
-            send_message(sender_id, response_text)
-            return "", 200
-
-        # ==========================================
-        # 🛑 CUSTOMER "CLOSE" COMMAND
-        # ==========================================
-        if msg_type == "text" and text_body_upper == "CLOSE":
-            active_req = r.get(f"customer:{sender_id}:active_req")
-            if active_req:
-                r.set(f"req:{active_req}:status", "CLOSED", ex=86400)
-                close_request_in_db(active_req, "CLOSED_HIRED")
-                response_text = (
-                    f"✅ Request *{active_req}* has been closed! Artisans will no longer send proposals.\n\n"
-                    "⚠️ *REMINDER:* Do not forget to give your 4-digit Handshake PIN to your hired artisan *only* when the job is fully completed."
-                )
-                r.delete(f"customer:{sender_id}:active_req")
-            else:
-                response_text = "⚠️ You don't have any active requests to close."
-
-            send_message(sender_id, response_text)
-            return "", 200
-
-        # ==========================================
-        # 🚀 ARTISAN INTERCEPTION LOGIC (PROPOSAL)
-        # ==========================================
-        if msg_type == "text" and text_body_upper.startswith("HND-"):
-            # Security Check: Are they a verified artisan in the DB?
-            profile = get_artisan_profile(sender_id)
-            if not profile or profile.get("status") != "approved":
-                send_message(
-                    sender_id,
-                    "🚫 Security Alert: You must be a fully verified artisan to bid on open jobs. Send 'Hi' and select the Artisan Portal to apply.",
-                )
-                return "", 200
-
-            ref_id_input = text_body_upper
-            customer_id = r.get(f"req:{ref_id_input}:customer")
-
-            if customer_id:
-                r.set(state_key, STATE_ARTISAN_PROPOSING, ex=900)
-                r.set(f"artisan:{sender_id}:target_req", ref_id_input, ex=900)
-                response_text = (
-                    f"✅ Request *{ref_id_input}* found.\n\n"
-                    "Please type your proposal for the customer. "
-                    "Include your estimated price and how soon you can arrive."
-                )
-            else:
-                response_text = "❌ Invalid or expired Reference ID. Please check the group chat and try again."
-
-            send_message(sender_id, response_text)
-            return "", 200
+        # --- GLOBAL RESET ---
+        if msg_type == "text" and text_body_upper == "RESET":
+            # Clear all potential session data
+            r.delete(
+                state_key,
+                f"handees:{sender_id}:category",
+                f"customer:{sender_id}:selected_merchant",
+                f"merchant:{sender_id}:pending_booking",
+            )
+            current_state = STATE_START
 
         # ==========================================
         # 🛠️ STATE MACHINE ROUTER
         # ==========================================
-        if current_state == STATE_START or (
-            msg_type == "text" and text_body_upper == "RESET"
-        ):
-            r.delete(data_key_cat, data_key_desc, data_key_photo)
+
+        # --- STEP 1: WELCOME & ROLE SELECTION ---
+        if current_state == STATE_START:
             response_text = (
-                "Welcome to Handees! 🛠️ The safest way to fix your home in Yaba/Akoka.\n\n"
+                "Welcome to Handees! 📅 \n\n"
                 "How can we help you today?\n"
-                "Reply *1* - I need a service (Customer)\n"
-                "Reply *2* - I want to provide a service (Artisan Portal)"
+                "Reply *1* - I want to book a service\n"
+                "Reply *2* - I am a Merchant / Business Owner"
             )
             r.set(state_key, STATE_CHOOSING_ROLE, ex=900)
 
-        # --- ROLE SELECTION ---
+        # --- STEP 2: ROUTING LOGIC ---
         elif current_state == STATE_CHOOSING_ROLE:
             if text_body == "1":
+                # Route to Customer Flow
                 response_text = (
-                    "Let's get your issue fixed. Select a category:\n\n"
-                    "1️⃣ Plumber\n2️⃣ Electrician\n3️⃣ Carpenter\n4️⃣ AC/Fridge Repair\n"
-                    "5️⃣ Phone/Laptop Repair\n6️⃣ Other\n\n"
-                    "Reply with the *number* of the service you need:"
+                    "What are you looking for today?\n"
+                    "1️⃣ Barbershop / Salon\n"
+                    "2️⃣ Mechanic Garage\n"
+                    "3️⃣ Spa / Aesthetics\n\n"
+                    "Reply with a *number*:"
                 )
                 r.set(state_key, STATE_WAITING_CATEGORY, ex=900)
+
             elif text_body == "2":
-                response_text = (
-                    "Welcome to the Handees Artisan Portal. 👷\n\n"
-                    "Reply *A* - Apply to join the network.\n"
-                    "Reply *B* - View open jobs & send proposals."
-                )
-                r.set(state_key, STATE_ARTISAN_PORTAL, ex=900)
+                # Route to Merchant Flow
+                profile = get_merchant_profile(sender_id)
+                if profile:
+                    # Existing Approved Merchant -> Standard Dashboard Only (No status check needed)
+                    response_text = (
+                        f"Welcome back, *{profile['name']}*! 🏬\n\n"
+                        "Reply *1* - View Active Bookings\n"
+                        "Reply *2* - View My Rating"
+                    )
+                    r.set(state_key, STATE_MERCHANT_DASHBOARD, ex=900)
+                else:
+                    # Unapproved or Pending Merchant -> Look up application in Firestore
+                    app_status, rejection_reason = get_pending_merchant_status(
+                        sender_id
+                    )
+
+                    if app_status == "pending_review":
+                        response_text = (
+                            "⏳ *Application Status: Under Review*\n\n"
+                            "Our compliance team is currently reviewing your 10-second storefront verification video.\n\n"
+                            "Reply *CHECK* to re-run an eligibility status query onto your profile."
+                        )
+                        r.set(state_key, "MERCHANT_STATUS_CHECK", ex=900)
+
+                    elif app_status == "rejected":
+                        response_text = (
+                            f"❌ *Application Status: Denied*\n"
+                            f"Reason: {rejection_reason}\n\n"
+                            "Reply *CHECK* to see if your 7-day restriction cooldown has cleared to re-apply."
+                        )
+                        r.set(state_key, "MERCHANT_STATUS_CHECK", ex=900)
+
+                    else:
+                        # Brand new user with completely no history entries
+                        response_text = (
+                            "Ready to grow your business? 🚀\n\n"
+                            "Partner with Handees to get premium bookings directly through WhatsApp. "
+                            "Click the secure link below to submit your business details for verification:\n"
+                            f"🔗 {ONBOARDING_FORM_URL}\n\n"
+                            "*Note: Once approved, your shop will automatically appear to customers here.*"
+                        )
+                        r.delete(state_key)
             else:
                 response_text = "⚠️ Please reply with 1 or 2."
 
-        # --- ARTISAN PORTAL ---
-        elif current_state == STATE_ARTISAN_PORTAL:
-            if text_body_upper == "A":
-                response_text = (
-                    "Ready to go online? 🚀 To protect our community, all artisans must pass our security vetting.\n\n"
-                    "Click the secure link below to submit your Guarantor details and verify your identity. It takes 3 minutes.\n"
-                    f"🔗 {ONBOARDING_FORM_URL}\n\n"
-                    "*Note: Your application will be reviewed manually by our team.*"
-                )
-                r.delete(state_key)
-            elif text_body_upper == "B":
-                profile = get_artisan_profile(sender_id)
-                if profile and profile.get("status") == "approved":
-                    response_text = "You are a verified artisan! ✅\n\nTo bid on an open job, simply reply to this chat with the Request ID (e.g., HND-1A2B) posted in the community group."
+        # ==========================================
+        # 🏢 MERCHANT DASHBOARD FLOW
+        # ==========================================
+        elif current_state == STATE_MERCHANT_DASHBOARD:
+            profile = get_merchant_profile(sender_id)
+            if text_body == "1":
+                # Check Redis for a pending booking for this specific merchant
+                pending_booking = r.get(f"merchant:{sender_id}:pending_booking")
+                if pending_booking:
+                    time = r.get(f"booking:{pending_booking}:time")
+                    response_text = f"📅 You have a pending request!\n🔖 Ref: {pending_booking}\n⏰ Time: {time}\n\nReply ACCEPT or REJECT to that message."
                 else:
-                    response_text = "⚠️ You cannot view open jobs yet. Your profile is either incomplete or pending manual review.\n\nIf you haven't applied yet, send 'Hi' -> Option 2 -> Option A."
-                r.delete(state_key)
-            else:
-                response_text = "⚠️ Please reply with A or B."
+                    response_text = "📅 You currently have no pending booking requests. Keep an eye out!"
+                r.set(state_key, STATE_START, ex=900)
 
-        # --- CUSTOMER FLOW ---
+            elif text_body == "2":
+                response_text = f"⭐ *Your Shop Rating:* {profile['rating']} / 5.0\n\nGreat job keeping your customers happy!"
+                r.set(state_key, STATE_START, ex=900)
+            else:
+                response_text = "⚠️ Please reply with 1 or 2."
+
+        # ==========================================
+        # 🔍 UNAPPROVED MERCHANT STATUS CHECKER
+        # ==========================================    
+        elif current_state == "MERCHANT_STATUS_CHECK":
+            if text_body_upper == "CHECK":
+                # Look up latest app data parameters to fetch their NIN
+                local_phone = sender_id.replace("+", "")
+                if local_phone.startswith("234") and len(local_phone) == 13:
+                    local_phone = "0" + local_phone[3:]
+
+                # Fetch their record profile entry
+                from db_manager import db
+
+                query = (
+                    db.collection("pending_merchants")
+                    .where("businessDetails.phone", "==", local_phone)
+                    .order_by("createdAt", direction=db.Query.DESCENDING)
+                    .limit(1)
+                )
+                docs = query.stream()
+                latest_app = next(docs, None)
+
+                if latest_app:
+                    nin = latest_app.to_dict().get("ownerDetails", {}).get("nin")
+                    # Fire execution check logic matching the main gating engine rules
+                    is_eligible, message = check_application_eligibility(nin)
+
+                    if is_eligible:
+                        response_text = f"✅ *Good news!* You are fully eligible to apply. Link your storefront here: {ONBOARDING_FORM_URL}"
+                    else:
+                        response_text = f"📋 *System Assessment Update:*\n{message}"
+                else:
+                    response_text = "⚠️ No application data profile found connected to this number. Type RESET to start fresh."
+
+                r.set(state_key, STATE_START, ex=900)
+            else:
+                response_text = "⚠️ Invalid command. Please reply with *CHECK* or type *RESET* to go back to the main menu."
+
+        # ==========================================
+        # 🧑‍🔧 CUSTOMER FLOW
+        # ==========================================
         elif current_state == STATE_WAITING_CATEGORY:
             if text_body in CATEGORIES:
-                r.set(data_key_cat, CATEGORIES[text_body], ex=900)
-                response_text = f"Got it: *{CATEGORIES[text_body]}*.\n\nPlease type a short description of the issue."
-                r.set(state_key, STATE_WAITING_DESCRIPTION, ex=900)
+                selected_cat = CATEGORIES[text_body]
+                r.set(f"handees:{sender_id}:category", selected_cat, ex=900)
+
+                merchants = DUMMY_MERCHANTS.get(selected_cat, [])
+                if not merchants:
+                    response_text = f"No verified shops found for {selected_cat} yet. Type 'RESET' to start over."
+                else:
+                    msg_lines = [
+                        f"Here are the verified {selected_cat} shops near you:\n"
+                    ]
+
+                    # Inject Ratings into the list
+                    for m in merchants:
+                        msg_lines.append(
+                            f"{m['id']}️⃣ *{m['name']}* ({m['location']}) • ⭐ {m['rating']}"
+                        )
+
+                    msg_lines.append("\nReply with the *number* of the shop to book:")
+                    response_text = "\n".join(msg_lines)
+                    r.set(state_key, STATE_SELECTING_MERCHANT, ex=900)
             else:
-                response_text = (
-                    "⚠️ Invalid number. Please reply with 1, 2, 3, 4, 5, or 6."
+                response_text = "⚠️ Invalid selection. Please reply with 1, 2, or 3."
+
+        elif current_state == STATE_SELECTING_MERCHANT:
+            selected_cat = r.get(f"handees:{sender_id}:category")
+            merchants = DUMMY_MERCHANTS.get(selected_cat, [])
+
+            selected_merchant = next(
+                (m for m in merchants if str(m["id"]) == text_body), None
+            )
+
+            if selected_merchant:
+                r.set(
+                    f"customer:{sender_id}:selected_merchant",
+                    selected_merchant["phone"],
+                    ex=900,
                 )
-
-        elif current_state == STATE_WAITING_DESCRIPTION:
-            if msg_type == "text":
-                r.set(data_key_desc, text_body, ex=900)
-                response_text = "Thanks. Do you have a photo or video of the issue? 📸\n\n👉 **Send the photo now**.\n👉 Or type **SKIP** if you don't have one."
-                r.set(state_key, STATE_WAITING_PHOTO, ex=900)
+                response_text = (
+                    f"Great! You selected *{selected_merchant['name']}*.\n\n"
+                    f"What time would you like to book for today? (e.g., *2:00 PM* or *Now*)"
+                )
+                r.set(state_key, STATE_SELECTING_TIME, ex=900)
             else:
-                response_text = "Please send a text description first."
+                response_text = "⚠️ Invalid shop number. Please try again."
 
-        elif current_state == STATE_WAITING_PHOTO:
-            has_photo = "No"
-            if msg_type == "image":
-                r.set(data_key_photo, image_id, ex=900)
-                has_photo = "Yes"
-            elif msg_type == "text" and text_body_upper == "SKIP":
-                r.set(data_key_photo, "None", ex=900)
+        elif current_state == STATE_SELECTING_TIME:
+            requested_time = text_body.strip()
+            merchant_phone = r.get(f"customer:{sender_id}:selected_merchant")
+
+            if merchant_phone:
+                # Save the requested time temporarily
+                r.set(f"customer:{sender_id}:temp_time", requested_time, ex=900)
+
+                response_text = (
+                    f"Almost done! You are requesting an appointment for *{requested_time}*.\n\n"
+                    f"⚖️ *Terms of Service:*\n"
+                    f"Handees is a booking directory. We do not provide the services and are not liable for interactions or disputes with the merchant.\n\n"
+                    f"Reply *YES* to accept these terms and send your booking request.\n"
+                    f"Reply *CANCEL* to stop."
+                )
+                r.set(state_key, "WAITING_TERMS_CONFIRMATION", ex=900)
             else:
-                send_message(sender_id, "Please send a photo or type 'SKIP'.")
+                response_text = "⚠️ Session expired. Please type 'RESET' to start over."
+
+        # --- STEP 5: LOG CONSENT & TRIGGER BOOKING ---
+        elif current_state == "WAITING_TERMS_CONFIRMATION":
+            if text_body_upper == "YES":
+                merchant_phone = r.get(f"customer:{sender_id}:selected_merchant")
+                requested_time = r.get(f"customer:{sender_id}:temp_time")
+
+                booking_id = generate_ref_id()
+                timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+                # 1. Log the Booking & Consent in Redis (Eventually move to Firestore)
+                r.set(f"booking:{booking_id}:customer", sender_id, ex=86400)
+                r.set(f"booking:{booking_id}:time", requested_time, ex=86400)
+                r.set(f"booking:{booking_id}:terms_accepted", "true", ex=86400)
+                r.set(f"booking:{booking_id}:consent_timestamp", timestamp, ex=86400)
+
+                # 2. Ping Customer
+                send_message(
+                    sender_id,
+                    f"✅ Terms accepted. Contacting the shop to confirm {requested_time}. Please wait...",
+                )
+                r.set(state_key, STATE_START, ex=900)
+
+                # 3. Ping Merchant
+                r.set(
+                    f"handees:{merchant_phone}:state", STATE_MERCHANT_DECIDING, ex=900
+                )
+                r.set(f"merchant:{merchant_phone}:pending_booking", booking_id, ex=900)
+
+                merchant_msg = (
+                    f"🔔 *New Booking Request!*\n\n"
+                    f"🔖 *Ref:* {booking_id}\n"
+                    f"⏰ *Time:* {requested_time}\n"
+                    f"📱 *Customer:* wa.me/{sender_id.replace('+', '')}\n\n"
+                    f"Reply *ACCEPT* to confirm this appointment.\n"
+                    f"Reply *REJECT* if you are fully booked."
+                )
+                send_message(merchant_phone, merchant_msg)
                 return "", 200
 
-            cat = r.get(data_key_cat)
-            desc = r.get(data_key_desc)
-
-            response_text = f"Please confirm your request details:\n\n🔧 *Service:* {cat}\n📝 *Issue:* {desc}\n📸 *Photo:* {has_photo}\n\nReply *YES* to submit request.\nReply *CANCEL* to start over. \nBy replying *YES* you also accept the customer terms of use of the handees platform, as stated here: {TERMS_OF_USE_URL}"
-            r.set(state_key, STATE_WAITING_CONFIRMATION, ex=900)
-
-        elif current_state == STATE_WAITING_CONFIRMATION:
-            if text_body_upper == "YES":
-                final_cat = r.get(data_key_cat)
-                final_desc = r.get(data_key_desc)
-                final_photo = r.get(data_key_photo)
-
-                ref_id = generate_ref_id()
-                pin_code = generate_pin()
-
-                r.set(f"req:{ref_id}:customer", sender_id, ex=86400)
-                r.set(f"req:{ref_id}:status", "OPEN", ex=86400)
-                r.set(f"req:{ref_id}:pin", pin_code, ex=86400)
-                r.set(f"customer:{sender_id}:active_req", ref_id, ex=86400)
-
-                has_photo_bool = bool(final_photo and final_photo != "None")
-                log_request(ref_id, sender_id, final_cat, final_desc, has_photo_bool)
-
-                admin_text = f"🚀 *New Handees Request!* 🚀\n\n🔖 *Ref:* {ref_id}\n🔧 *Service:* {final_cat}\n📝 *Issue:* {final_desc}\n\n👉 *Artisans:* Reply to the bot with *{ref_id}* to bid for this job."
-                send_message(ADMIN_NO, admin_text)
-                if final_photo and final_photo != "None":
-                    send_image(ADMIN_NO, final_photo)
-
-                response_text = (
-                    f"✅ Request Received! Your ID is *{ref_id}*.\n\n"
-                    f"🔒 *YOUR SECURITY PIN: {pin_code}*\n"
-                    "⚠️ Keep this safe! Only give this code to the artisan when the job is fully completed to your satisfaction.\n\n"
-                    "We have sent your request to our verified artisans. You will receive their proposals here shortly! ⏳"
-                )
-                r.delete(state_key, data_key_cat, data_key_desc, data_key_photo)
+            elif text_body_upper == "CANCEL":
+                response_text = "❌ Booking cancelled. Type 'RESET' to start over."
+                r.set(state_key, STATE_START, ex=900)
             else:
-                response_text = "❌ Request Cancelled. Type 'Hi' to start over."
-                r.delete(state_key, data_key_cat, data_key_desc, data_key_photo)
+                response_text = "⚠️ Please reply strictly with *YES* or *CANCEL*."
 
-        # --- ARTISAN PROPOSAL STATE ---
-        elif current_state == STATE_ARTISAN_PROPOSING:
-            if msg_type == "text":
-                target_req = r.get(f"artisan:{sender_id}:target_req")
-                customer_id = r.get(f"req:{target_req}:customer")
-                req_status = r.get(f"req:{target_req}:status")
+        # --- MERCHANT DECISION (INTERCEPT) ---
+        elif current_state == STATE_MERCHANT_DECIDING:
+            pending_booking_id = r.get(f"merchant:{sender_id}:pending_booking")
 
-                if customer_id and req_status == "OPEN":
-                    log_proposal(target_req, sender_id, text_body)
+            if not pending_booking_id:
+                response_text = "⚠️ You have no pending bookings."
+                r.set(state_key, STATE_START, ex=900)
+            else:
+                customer_id = r.get(f"booking:{pending_booking_id}:customer")
+                requested_time = r.get(f"booking:{pending_booking_id}:time")
 
-                    profile = get_artisan_profile(sender_id)
-                    if profile:
-                        artisan_card = f"👷 *Pro:* Verified {profile.get('trade', 'Artisan')}\n⏳ *Experience:* {profile.get('experience', 'Verified')} years\n🛡️ *Guarantor Status:* Cleared"
-                    else:
-                        artisan_card = "👷 *Pro:* Handees Verified Artisan\n🛡️ *Guarantor Status:* Cleared"
-
-                    customer_msg = (
-                        f"🔔 *New Artisan Proposal!* 🔔\n\n"
-                        f"🔖 *For Request:* {target_req}\n"
-                        f"{artisan_card}\n\n"
-                        f"💬 *Proposal:* {text_body}\n\n"
-                        f"👉 *Contact Artisan:* wa.me/{sender_id.replace('+', '')}\n"
-                        "_(If you hire this artisan, reply with *CLOSE* to stop receiving proposals)_"
+                if text_body_upper == "ACCEPT":
+                    send_message(
+                        sender_id,
+                        f"✅ Booking {pending_booking_id} confirmed and added to your schedule!",
                     )
-                    send_message(customer_id, customer_msg)
-                    response_text = "✅ Your proposal has been sent to the customer!"
-                elif req_status == "CLOSED":
-                    response_text = "❌ Sorry, this request has already been closed by the customer."
+                    if customer_id:
+                        send_message(
+                            customer_id,
+                            f"🎉 *Confirmed!* The shop has accepted your appointment for {requested_time}. See you there!",
+                        )
+                elif text_body_upper == "REJECT":
+                    send_message(
+                        sender_id,
+                        f"❌ Booking {pending_booking_id} rejected. We will let the customer know.",
+                    )
+                    if customer_id:
+                        send_message(
+                            customer_id,
+                            f"⚠️ The shop is currently fully booked for {requested_time}. Type 'RESET' to select a different shop or time.",
+                        )
                 else:
-                    response_text = "⚠️ This request has expired or the customer is no longer available."
+                    send_message(
+                        sender_id, "Please reply strictly with *ACCEPT* or *REJECT*."
+                    )
+                    return "", 200
 
-                r.delete(state_key, f"artisan:{sender_id}:target_req")
-
-        elif msg_type == "text" and text_body_upper == "CANCEL":
-            response_text = "❌ Session cleared. Type 'Hi' to start over."
-            r.delete(state_key, data_key_cat, data_key_desc, data_key_photo)
+                r.delete(state_key, f"merchant:{sender_id}:pending_booking")
+                return "", 200
 
         if response_text:
             send_message(sender_id, response_text)
@@ -404,46 +452,43 @@ def payload():
         return "", 403
 
 
-@app.post("/admin/notify-verdict")
+@app.get("/api/check-eligibility/<string:nin>")
+def api_check_eligibility(nin):
+    # This calls your underlying database check logic
+    is_eligible, message = check_application_eligibility(nin)
+    return {"eligible": is_eligible, "message": message}, 200
+
+
+@app.post("/api/notify-verdict")
 def notify_verdict():
     data = request.get_json(force=True)
-    artisan_phone = data.get("phone")
-    artisan_name = data.get("name")
+    merchant_phone = data.get("phone")
+    merchant_name = data.get("name")
     status = data.get("status")
     reason = data.get("reason", "Not specified")
 
-    if not artisan_phone:
+    if not merchant_phone:
         return {"error": "Phone number missing"}, 400
 
-    formatted_phone = artisan_phone.replace("+", "").replace(" ", "")
+    # Clean the phone number format for Meta's Graph API
+    formatted_phone = merchant_phone.replace("+", "").replace(" ", "")
 
     if status == "approved":
+        # Fires sequentially matching {{1}} -> Name
         send_template_message(
             to_number=formatted_phone,
-            template_name="artisan_approval",
-            params_dict={
-                "name": artisan_name,
-                "group_link": ARTISAN_GROUP_INVITE_LINK
-            }
+            template_name="merchant_approval",
+            params_dict={"name": merchant_name},
         )
     elif status == "rejected":
+        # Fires sequentially matching {{1}} -> Name, {{2}} -> Reason
         send_template_message(
             to_number=formatted_phone,
-            template_name="artisan_disapproval",
-            params_dict={
-                "name": artisan_name,
-                "reason": reason
-            }
+            template_name="merchant_disapproval",
+            params_dict={"name": merchant_name, "reason": reason},
         )
 
     return {"status": "success"}, 200
-
-
-@app.get("/api/check-eligibility/<nin>")
-def api_check_eligibility(nin):
-    # Uses your admin-privileged Python SDK to safely check the DB
-    is_eligible, message = check_application_eligibility(nin)
-    return {"eligible": is_eligible, "message": message}, 200
 
 
 if __name__ == "__main__":

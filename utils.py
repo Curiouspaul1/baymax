@@ -75,25 +75,72 @@ def send_image(to, image_id):
         print(f"Failed to send image: {e}")
 
 
+# def send_template_message(to_number, template_name, params_dict):
+#     """
+#     Sends an approved Meta Template message using named parameters.
+#     params_dict: A dictionary mapping Meta parameter names to their values.
+#      e.g., {"name": "Paul", "group_link": "https..."}
+#     """
+#     token = os.getenv("TOKEN")
+#     phone_number_id = os.getenv("PHONE_NUMBER_ID")
+
+#     url = f"https://graph.facebook.com/v23.0/{phone_number_id}/messages"
+#     headers = {
+#         "Authorization": f"Bearer {token}",
+#         "Content-Type": "application/json"
+#     }
+
+#     # Dynamically build the parameters list keeping YOUR named structure
+#     parameters_list = [
+#         {"type": "text", "parameter_name": key, "text": str(value)}
+#         for key, value in params_dict.items()
+#     ]
+
+#     payload = {
+#         "messaging_product": "whatsapp",
+#         "to": to_number,
+#         "type": "template",
+#         "template": {
+#             "name": template_name,
+#             "language": {"code": "en"},
+#             "components": (
+#                 [{"type": "body", "parameters": parameters_list}]
+#                 if parameters_list
+#                 else []
+#             ),
+#         },
+#     }
+
+#     response = requests.post(url, headers=headers, json=payload)
+#     if response.status_code not in [200, 201]:
+#         print(f"❌ Template Failed: {response.text}")
+#     else:
+#         print(f"✅ Template sent to {to_number}")
+
+#     return response
+
+
 def send_template_message(to_number, template_name, params_dict):
     """
-    Sends an approved Meta Template message using named parameters.
-    params_dict: A dictionary mapping Meta parameter names to their values.
-     e.g., {"name": "Paul", "group_link": "https..."}
+    Sends an approved Meta Template message using ordered positional parameters.
+    params_dict: A dictionary whose values correspond to {{1}}, {{2}}, etc., in order.
+                 e.g., {"name": "Paul", "reason": "Invalid NIN"}
     """
     token = os.getenv("TOKEN")
     phone_number_id = os.getenv("PHONE_NUMBER_ID")
 
+    # Upgraded API version to v23.0 to match your current codebase requirement
     url = f"https://graph.facebook.com/v23.0/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
 
-    # Dynamically build the parameters list keeping YOUR named structure
+    # Meta positional templates ({{1}}, {{2}}) demand strict type arrays.
+    # We strip out the explicit "parameter_name" key so it maps purely to standard indices.
     parameters_list = [
-        {"type": "text", "parameter_name": key, "text": str(value)}
-        for key, value in params_dict.items()
+        {"type": "text", "text": str(value)}
+        for value in params_dict.values()
     ]
 
     payload = {

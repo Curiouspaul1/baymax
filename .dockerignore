@@ -1,1 +1,6 @@
 .env
+env/
+review_dist/
+dist/
+*_1.py
+seed.py
