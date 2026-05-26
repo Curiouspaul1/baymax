@@ -8,9 +8,14 @@ import string
 
 from flask_cors import CORS
 from dotenv import load_dotenv
+from cryptography.fernet import Fernet
 from flask import Flask, request, abort
 
-from db_manager import check_application_eligibility, get_pending_merchant_status
+from db_manager import (
+    db,
+    check_application_eligibility,
+    get_pending_merchant_status
+)
 from utils import (
     parse_message,
     send_message,
@@ -23,13 +28,16 @@ load_dotenv()
 token = os.getenv("VERIFY_TOKEN")
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PASS = os.getenv("REDIS_PASS")
+APP_SECRET = os.getenv("APP_SECRET")
 ONBOARDING_FORM_URL = os.getenv("ONBOARDING_FORM_URL", "https://your-merchant-form.com")
+ENCRYPT_KEY = os.getenv("ENCRYPT_KEY")
 
 app = Flask(__name__)
 r = redis.Redis(
     host=REDIS_HOST, password=REDIS_PASS, port=6379, db=10, decode_responses=True
 )
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+cipher_suite = Fernet(ENCRYPT_KEY.encode())
 
 # --- STATE CONSTANTS ---
 STATE_START = "START"
@@ -112,6 +120,60 @@ def parse_data():
     if mode == "subscribe" and verify_token == token:
         return request.args.get("hub.challenge"), 200
     return "", 403
+
+
+@app.post("/api/secure-identity")
+def secure_identity():
+    """Takes a raw NIN, returns a search hash and an encrypted string."""
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data = request.get_json(force=True)
+    raw_nin = str(data.get("nin", "")).strip()
+
+    if not raw_nin:
+        return {"error": "Missing NIN"}, 400
+
+    nin_hash = hashlib.sha256(raw_nin.encode()).hexdigest()
+    nin_encrypted = cipher_suite.encrypt(raw_nin.encode()).decode()
+
+    return {"nin_hash": nin_hash, "nin_encrypted": nin_encrypted}, 200
+
+
+@app.post("/api/reveal-identity")
+def reveal_identity():
+    """Decrypts the NIN and logs the read-access for NDPA compliance."""
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data = request.get_json(force=True)
+    encrypted_nin = data.get("encrypted_nin")
+    admin_email = data.get("admin_email")
+    merchant_id = data.get("merchant_id")
+
+    if not encrypted_nin or not admin_email:
+        return {"error": "Missing payload data"}, 400
+
+    try:
+        # Decrypt the sensitive data
+        decrypted_nin = cipher_suite.decrypt(encrypted_nin.encode()).decode()
+
+        # Log the access to Firestore
+        log_ref = db.collection("audit_logs").document()
+        log_ref.set(
+            {
+                "action": "DECRYPTED_SENSITIVE_PII",
+                "target_merchant_id": merchant_id,
+                "accessed_by": admin_email,
+                "accessed_at": datetime.datetime.now(datetime.timezone.utc),
+                "ip_address": request.remote_addr,
+            }
+        )
+
+        return {"nin": decrypted_nin}, 200
+    except Exception as e:
+        print(f"Decryption/Logging Error: {e}")
+        return {"error": "Secure read failed"}, 403
 
 
 @app.post("/")
@@ -253,7 +315,7 @@ def payload():
 
         # ==========================================
         # 🔍 UNAPPROVED MERCHANT STATUS CHECKER
-        # ==========================================    
+        # ==========================================
         elif current_state == "MERCHANT_STATUS_CHECK":
             if text_body_upper == "CHECK":
                 # Look up latest app data parameters to fetch their NIN

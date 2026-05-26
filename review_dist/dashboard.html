@@ -252,8 +252,14 @@
                     </div>
                     <button id="btn-finalize"
                         class="px-12 py-4 bg-primary text-on-primary font-black rounded-xl shadow-2xl hover:bg-primary/90 transition-all">FINALIZE
-                        DECISION</button>
+                        DECISION
+                    </button>
                 </div>
+                <button id="btn-delete-data"
+                    class="flex-1 py-4 bg-red-100 text-red-600 border border-red-200 font-black rounded-xl hover:bg-red-600 hover:text-white transition-all ml-4">
+                    <span class="material-symbols-outlined align-middle mr-1 text-sm">delete_forever</span>
+                    PURGE DATA
+                </button>
             </div>
         </section>
 
@@ -268,8 +274,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAilatYX6E6A-W7iw83o9lxDiAF99EfYDI",
@@ -364,7 +370,31 @@
             document.getElementById('disp-address').innerText = biz.address || 'N/A';
             document.getElementById('disp-owner-name').innerText = owner.fullName || 'N/A';
             document.getElementById('disp-phone').innerText = biz.phone || 'N/A';
-            document.getElementById('disp-nin').innerText = owner.nin || 'N/A';
+
+            // New Decryption Logic
+            const ninDisplay = document.getElementById('disp-nin');
+
+            if (owner.nin_encrypted) {
+                ninDisplay.innerHTML = '<span class="text-[10px] text-slate-400 animate-pulse">DECRYPTING...</span>';
+                try {
+                    const decryptRes = await fetch('https://baymax-840733521710.europe-west1.run.app/api/reveal-identity', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            encrypted_nin: owner.nin_encrypted,
+                            admin_email: auth.currentUser.email, // Passing the logged-in admin
+                            merchant_id: merchant.id             // Tracking who they looked at
+                        })
+                    });
+                    const unlocked = await decryptRes.json();
+                    ninDisplay.innerText = unlocked.nin || 'DECRYPTION FAILED';
+                } catch (e) {
+                    ninDisplay.innerText = 'SECURE CONNECTION ERROR';
+                }
+            } else {
+                // ... fallback
+                ninDisplay.innerText = owner.nin || 'N/A'; // Fallback for your older plaintext test records
+            }
 
             // Extract Verification Video target tracking path string
             const videoBox = document.getElementById('media-video-container');
@@ -462,6 +492,50 @@
                 await signOut(auth);
             } catch (error) {
                 console.error("Sign out fail:", error);
+            }
+        });
+        document.getElementById('btn-delete-data').addEventListener('click', async () => {
+            if (!activeMerchantFullData) return;
+
+            const confirmPurge = confirm("Initiating Tombstone Purge: This will destroy the video and NIN, but retain the consent signature for legal auditing. Proceed?");
+            if (!confirmPurge) return;
+
+            const btn = document.getElementById('btn-delete-data');
+            btn.innerText = "EXECUTING TOMBSTONE...";
+            btn.disabled = true;
+
+            try {
+                // 1. DESTROY LIABILITY: Nuke the video file from Firebase Storage
+                if (activeMerchantFullData.verificationVideoPath) {
+                    const videoRef = ref(storage, activeMerchantFullData.verificationVideoPath);
+                    await deleteObject(videoRef).catch(err => console.warn("Video already purged", err));
+                }
+
+                // 2. PRESERVE AUDIT TRAIL: Create the Tombstone record
+                await addDoc(collection(db, "archived_records"), {
+                    originalMerchantId: selectedId,
+                    businessName: activeMerchantFullData.businessDetails?.name || "Unknown",
+                    phone: activeMerchantFullData.businessDetails?.phone || "Unknown",
+                    legalConsentTimestamp: activeMerchantFullData.legalConsent?.acceptedAt || "No Record",
+                    purgedAt: serverTimestamp(),
+                    purgedBy: auth.currentUser.email,
+                    reason: "Data Deletion Request / Rejection"
+                });
+
+                // 3. SCRUB ACTIVE DATABASE: Hard delete the original operational record
+                await deleteDoc(doc(db, "pending_merchants", selectedId));
+
+                alert("Tombstone generated. Sensitive data destroyed.");
+
+                reviewPanel.style.display = 'none';
+                emptyState.style.display = 'flex';
+
+            } catch (error) {
+                console.error("Purge failure:", error);
+                alert("Failed to execute tombstone purge.");
+            } finally {
+                btn.innerText = "PURGE DATA";
+                btn.disabled = false;
             }
         });
     </script>

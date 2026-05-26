@@ -447,6 +447,19 @@
                 const videoFile = document.getElementById('verificationVideo').files[0];
                 const videoPath = await uploadFileAndGetPath(videoFile, 'merchant_verification_videos');
 
+                statusText.innerText = "Encrypting identity data...";
+                const rawNin = document.getElementById('nin').value;
+
+                // Ask Cloud Run to secure the NIN
+                const securityResponse = await fetch(`${serverURL}/api/secure-identity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nin: rawNin })
+                });
+
+                if (!securityResponse.ok) throw new Error("Encryption service failed.");
+                const securedData = await securityResponse.json();
+
                 statusText.innerText = "Finalizing merchant profile data...";
                 const consentTimestamp = new Date().toISOString();
 
@@ -459,7 +472,9 @@
                     },
                     ownerDetails: {
                         fullName: document.getElementById('fullName').value,
-                        nin: document.getElementById('nin').value,
+                        // Swap plaintext for secured fields
+                        nin_hash: securedData.nin_hash,
+                        nin_encrypted: securedData.nin_encrypted,
                     },
                     legalConsent: {
                         termsAccepted: true,
@@ -472,7 +487,6 @@
                 };
 
                 await addDoc(collection(db, "pending_merchants"), payload);
-
                 // 2. Success Pipeline: Hide loader, hide modal, show success screen
                 processingOverlay.classList.add('hidden');
                 termsModal.classList.add('hidden');

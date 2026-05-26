@@ -273,10 +273,14 @@ def check_application_eligibility(nin):
     Returns: (is_eligible: bool, message: str)
     """
     try:
-        # 1. Fetch the most recent application for this NIN using the new B2B structure
+        # 1. Hash the incoming NIN to match the database index
+        import hashlib
+        nin_hash = hashlib.sha256(str(nin).strip().encode()).hexdigest()
+
+        # 2. Query against the hash, not the plaintext
         query = (
             db.collection("pending_merchants")
-            .where("ownerDetails.nin", "==", str(nin).strip())
+            .where("ownerDetails.nin_hash", "==", nin_hash)
             .order_by("createdAt", direction=firestore.Query.DESCENDING)
             .limit(1)
         )
