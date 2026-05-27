@@ -53,6 +53,7 @@ STATE_SELECTING_TIME = "SELECTING_TIME"
 # Merchant States
 STATE_MERCHANT_DASHBOARD = "MERCHANT_DASHBOARD"
 STATE_MERCHANT_DECIDING = "MERCHANT_DECIDING"
+MENU_FOOTER = "\n\n*(Type 0 at any time to return to the main menu)*"
 
 # --- B2B PIVOT DATA ---
 CATEGORIES = {
@@ -60,7 +61,7 @@ CATEGORIES = {
     "2": "Mechanic Garage",
     "3": "Spa / Aesthetics",
     "4": "Fashion Designer",
-    "5": "Nailtech"
+    "5": "Nailtech",
 }
 
 # Dummy Database (Now includes Ratings)
@@ -212,16 +213,19 @@ def payload():
         response_text = ""
         text_body_upper = text_body.strip().upper() if text_body else ""
 
-        # --- GLOBAL RESET ---
-        if msg_type == "text" and text_body_upper == "RESET":
-            # Clear all potential session data
+        # --- GLOBAL RESET / EMERGENCY EXIT ---
+        ESCAPE_KEYWORDS = {"0", "RESET", "MENU", "HOME", "CANCEL", "STOP"}
+        if msg_type == "text" and text_body_upper in ESCAPE_KEYWORDS:
+            # Nuke all potential session data for this user
             r.delete(
                 state_key,
                 f"handees:{sender_id}:category",
                 f"customer:{sender_id}:selected_merchant",
                 f"merchant:{sender_id}:pending_booking",
+                f"customer:{sender_id}:temp_time"
             )
             current_state = STATE_START
+            text_body = "" # Clear this so the STEP 1 block triggers cleanly below
 
         # ==========================================
         # 🛠️ STATE MACHINE ROUTER
@@ -396,7 +400,9 @@ def payload():
             merchants = get_verified_merchants_by_category(selected_cat)
 
             # Match against the short ID
-            selected_merchant = next((m for m in merchants if m["id"] == text_body_upper), None)
+            selected_merchant = next(
+                (m for m in merchants if m["id"] == text_body_upper), None
+            )
 
             if selected_merchant:
                 # Format phone to international for WhatsApp routing
@@ -406,11 +412,13 @@ def payload():
                 else:
                     routing_phone = raw_phone
 
+                operating_hours = selected_merchant.get("operatingHours", "Hours not specified")
                 r.set(f"customer:{sender_id}:selected_merchant", routing_phone, ex=900)
                 response_text = (
-                    f"Great! You selected *{selected_merchant['name']}*.\n\n"
+                    f"Great! You selected *{selected_merchant['name']}*.\n"
+                    f"🕒 *Hours:* {operating_hours}\n\n"
                     f"What time would you like to book for today? (e.g., *2:00 PM* or *Now*)"
-                )
+                ) + MENU_FOOTER
                 r.set(state_key, STATE_SELECTING_TIME, ex=900)
             else:
                 response_text = "⚠️ Invalid shop ID. Please try again."
@@ -425,11 +433,11 @@ def payload():
 
                 response_text = (
                     f"Almost done! You are requesting an appointment for *{requested_time}*.\n\n"
-                    f"⚖️ *Terms of Service:*\n"
-                    f"Handees is a booking directory. We do not provide the services and are not liable for interactions or disputes with the merchant.\n\n"
-                    f"Reply *YES* to accept these terms and send your booking request.\n"
+                    f"⚖️ *Terms & Privacy:*\n"
+                    f"Handees is a booking directory. By replying YES, you agree to our terms and explicitly consent to sharing your WhatsApp number with the merchant so they can contact you directly.\n\n"
+                    f"Reply *YES* to accept and send your request.\n"
                     f"Reply *CANCEL* to stop."
-                )
+                ) + MENU_FOOTER
                 r.set(state_key, "WAITING_TERMS_CONFIRMATION", ex=900)
             else:
                 response_text = "⚠️ Session expired. Please type 'RESET' to start over."
@@ -460,15 +468,16 @@ def payload():
                 r.set(
                     f"handees:{merchant_phone}:state", STATE_MERCHANT_DECIDING, ex=900
                 )
-                r.set(f"merchant:{merchant_phone}:pending_booking", booking_id, ex=900)
+                # Add to a Redis Set instead of overwriting a string
+                r.sadd(f"merchant:{merchant_phone}:pending_bookings", booking_id)
 
                 merchant_msg = (
                     f"🔔 *New Booking Request!*\n\n"
                     f"🔖 *Ref:* {booking_id}\n"
                     f"⏰ *Time:* {requested_time}\n"
                     f"📱 *Customer:* wa.me/{sender_id.replace('+', '')}\n\n"
-                    f"Reply *ACCEPT* to confirm this appointment.\n"
-                    f"Reply *REJECT* if you are fully booked."
+                    f"Reply *ACCEPT {booking_id}* to confirm.\n"
+                    f"Reply *REJECT {booking_id}* if fully booked."
                 )
                 send_message(merchant_phone, merchant_msg)
                 return "", 200
@@ -480,44 +489,59 @@ def payload():
                 response_text = "⚠️ Please reply strictly with *YES* or *CANCEL*."
 
         # --- MERCHANT DECISION (INTERCEPT) ---
+        # --- MERCHANT DECISION (INTERCEPT) ---
         elif current_state == STATE_MERCHANT_DECIDING:
-            pending_booking_id = r.get(f"merchant:{sender_id}:pending_booking")
+            parts = text_body_upper.split()
 
-            if not pending_booking_id:
-                response_text = "⚠️ You have no pending bookings."
-                r.set(state_key, STATE_START, ex=900)
-            else:
-                customer_id = r.get(f"booking:{pending_booking_id}:customer")
-                requested_time = r.get(f"booking:{pending_booking_id}:time")
-
-                if text_body_upper == "ACCEPT":
-                    send_message(
-                        sender_id,
-                        f"✅ Booking {pending_booking_id} confirmed and added to your schedule!",
-                    )
-                    if customer_id:
-                        send_message(
-                            customer_id,
-                            f"🎉 *Confirmed!* The shop has accepted your appointment for {requested_time}. See you there!",
-                        )
-                elif text_body_upper == "REJECT":
-                    send_message(
-                        sender_id,
-                        f"❌ Booking {pending_booking_id} rejected. We will let the customer know.",
-                    )
-                    if customer_id:
-                        send_message(
-                            customer_id,
-                            f"⚠️ The shop is currently fully booked for {requested_time}. Type 'RESET' to select a different shop or time.",
-                        )
-                else:
-                    send_message(
-                        sender_id, "Please reply strictly with *ACCEPT* or *REJECT*."
-                    )
-                    return "", 200
-
-                r.delete(state_key, f"merchant:{sender_id}:pending_booking")
+            # Require exactly two parts: ACTION and ID
+            if len(parts) != 2 or parts[0] not in ["ACCEPT", "REJECT"]:
+                response_text = "⚠️ Invalid format. Please reply with ACCEPT or REJECT followed by the Reference ID (e.g., *ACCEPT BK-12345*)."
+                send_message(sender_id, response_text)
                 return "", 200
+
+            action, target_booking_id = parts[0], parts[1]
+
+            # Verify this specific booking is actually pending for this merchant
+            if not r.sismember(
+                f"merchant:{sender_id}:pending_bookings", target_booking_id
+            ):
+                response_text = f"⚠️ Booking {target_booking_id} is no longer pending or doesn't exist."
+                send_message(sender_id, response_text)
+                # If they have no more pending bookings, release them to the main menu
+                if r.scard(f"merchant:{sender_id}:pending_bookings") == 0:
+                    r.set(state_key, STATE_START, ex=900)
+                return "", 200
+
+            customer_id = r.get(f"booking:{target_booking_id}:customer")
+            requested_time = r.get(f"booking:{target_booking_id}:time")
+
+            if action == "ACCEPT":
+                send_message(
+                    sender_id,
+                    f"✅ Booking {target_booking_id} confirmed and added to your schedule!",
+                )
+                if customer_id:
+                    send_message(
+                        customer_id,
+                        f"🎉 *Confirmed!* The shop has accepted your appointment for {requested_time}. See you there!",
+                    )
+
+            elif action == "REJECT":
+                send_message(sender_id, f"❌ Booking {target_booking_id} rejected.")
+                if customer_id:
+                    send_message(
+                        customer_id,
+                        f"⚠️ The shop cannot accommodate your request for {requested_time}. Type 'RESET' to select a different shop.",
+                    )
+
+            # Clean up the specific booking from the set
+            r.srem(f"merchant:{sender_id}:pending_bookings", target_booking_id)
+
+            # If the set is now empty, return merchant to the main menu
+            if r.scard(f"merchant:{sender_id}:pending_bookings") == 0:
+                r.set(state_key, STATE_START, ex=900)
+
+            return "", 200
 
         if response_text:
             send_message(sender_id, response_text)

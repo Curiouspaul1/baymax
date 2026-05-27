@@ -141,7 +141,7 @@
                             <option>Barbershop / Salon</option>
                             <option>Mechanic Garage</option>
                             <option>Spa / Aesthetics</option>
-                            <option>Fashion Designers</option>
+                            <option>Fashion Designer</option>
                             <option>Nailtech</option>
                         </select>
                     </div>
@@ -152,7 +152,12 @@
                         <textarea id="shopAddress"
                             class="val-text w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium placeholder:text-on-surface-variant/40"
                             placeholder="Full address of the outlet (e.g. 12 Sabo Road, Yaba)" required
-                            rows="3"></textarea>
+                            rows="3">
+                        </textarea>
+                    </div>
+                    <div class="group">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Operating Hours</label>
+                        <input id="operatingHours" class="val-text w-full bg-surface-container-high border-none rounded-lg p-4 focus:ring-2 focus:ring-primary-container transition-all text-on-surface font-medium" placeholder="e.g. Mon-Sat: 9AM - 6PM" required type="text" />
                     </div>
                 </div>
             </section>
@@ -471,6 +476,7 @@
                         category: document.getElementById('category').value,
                         address: document.getElementById('shopAddress').value,
                         phone: document.getElementById('phoneNumber').value,
+                        operatingHours: document.getElementById('operatingHours').value
                     },
                     ownerDetails: {
                         fullName: document.getElementById('fullName').value,
